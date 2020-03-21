@@ -5,7 +5,7 @@
   "env": {
     "NODE_OPTIONS": {
       "required": true,
-      "value": "--max_old_space_size=512"
+      "value": "--max_old_space_size=1024"
     },
     "NODE_ENV": {
       "required": true,
