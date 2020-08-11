@@ -14,6 +14,8 @@ const registryLookupInfo = require("./schemes/RegistryLookup.json");
 const co2kenInfo = require("./schemes/CO2ken.json");
 const dXTokenRegistry = require("./schemes/dXTokenRegistry.json");
 const dXswapGovernance = require("./schemes/DXswapGovernance.json");
+const uniswap = require("./schemes/Uniswap.json");
+
 
 const KNOWNSCHEMES = [
   dutchXInfo,
@@ -26,6 +28,7 @@ const KNOWNSCHEMES = [
   registryLookupInfo,
   dXTokenRegistry,
   dXswapGovernance,
+  uniswap,
 ];
 
 const SCHEMEADDRESSES: {[network: string]: { [address: string]: any}} = {

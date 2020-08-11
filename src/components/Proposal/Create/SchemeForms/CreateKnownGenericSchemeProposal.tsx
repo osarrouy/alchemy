@@ -15,7 +15,7 @@ import { NotificationStatus, showNotification } from "reducers/notifications";
 import * as arcActions from "actions/arcActions";
 
 import Analytics from "lib/analytics";
-import { isValidUrl } from "lib/util";
+import { isValidUrl, targetedNetwork } from "lib/util";
 import { exportUrl, importUrlValues } from "lib/proposalUtils";
 
 import TagsSelector from "components/Proposal/Create/SchemeForms/TagsSelector";
@@ -25,6 +25,7 @@ import MarkdownField from "./MarkdownField";
 import HelpButton from "components/Shared/HelpButton";
 
 const BN = require("bn.js");
+const TOKENS = require("../../../../../data/tokens.json");
 
 interface IExternalProps {
   daoAvatarAddress: string;
@@ -62,6 +63,10 @@ interface IState {
   tags: Array<string>;
 }
 
+interface IToken {
+  symbol: string;
+}
+
 class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
 
   initialFormValues: IFormValues;
@@ -95,6 +100,20 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     return ethToSend;
   }
 
+  private tokensField = (name: string, touched: FormikTouched<IFormValues>, errors: FormikErrors<IFormValues>) => {
+    const tokens: Array<Array<string | IToken>> = Object.entries(TOKENS[targetedNetwork()].tokens);
+
+    return (
+      <Field id={name} name={name} component="select" placeholder="Choose an ERC20 token" className={touched[name] && errors[name] ? css.error : null}>
+        <option value="" disabled selected>Choose an ERC20 token</option>
+        {
+          tokens.map(token => {
+            return (<option key={token[0] as string} value={token[0] as string}>{(token[1] as IToken).symbol}</option>);
+          })
+        }
+      </Field>
+    );
+  }
 
   private handleSubmit = async (values: IFormValues, { setSubmitting }: any ): Promise<void> => {
 
@@ -185,6 +204,12 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
           </label>
         </div>;
       default:
+        if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_from") {
+          return this.tokensField("_from", touched, errors);
+        }
+        if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_to") {
+          return this.tokensField("_to", touched, errors);
+        }
         if (field.type.includes("[]")) {
           // eslint-disable-next-line react/jsx-no-bind
           return <FieldArray name={field.name} render={(arrayHelpers) => (

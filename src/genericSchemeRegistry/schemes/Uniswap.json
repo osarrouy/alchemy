@@ -1,0 +1,95 @@
+
+{
+  "name": "Uniswap",
+  "addresses": {
+    "main": [
+      "0xbd9A61d72be109605F2bD5ac26ede00ccb8e5051"
+    ],
+    "rinkeby": [
+      "0xbd9A61d72be109605F2bD5ac26ede00ccb8e5051"
+    ],
+    "private": [
+      "0x03D95E1760893Abc882F6840c5765710d116991F"
+    ]
+  },
+  "actions": [
+    {
+      "id": "swap",
+      "label": "Swap tokens and / or ETH",
+      "description": "Some fancy explanation",
+      "notes": "coming soon",
+      "fields": [
+        {
+          "label": "From",
+          "name": "_from",
+          "placeholder": "ERC20 address or 0x00... for ETH"
+        },
+        {
+          "label": "To",
+          "name": "_to",
+          "placeholder": "ERC20 address or 0x00... for ETH"
+        },
+        {
+          "label": "Amount of tokens / ETH to swap",
+          "name": "_amount",
+          "decimals": 18,
+          "unit": "tokens / ETH",
+          "placeholder": "2000"
+        },
+        {
+          "label": "Mimimum amount of tokens / ETH to be returned",
+          "name": "_expected",
+          "decimals": 18,
+          "unit": "tokens / ETH",
+          "placeholder": "50"
+        }
+      ],
+      "abi": {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_from",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "_to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_expected",
+            "type": "uint256"
+          }
+        ],
+        "name": "swap",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    },
+    {
+      "id": "seed",
+      "label": "Seed liquidity",
+      "description": "Seed liquidity in a Uniswap pair",
+      "notes": "coming soon",
+      "fields": [],
+      "abi": {
+        "constant": false,
+        "inputs": [],
+        "name": "approve",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    }
+  ]
+}
