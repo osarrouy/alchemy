@@ -26,6 +26,7 @@ import HelpButton from "components/Shared/HelpButton";
 
 const BN = require("bn.js");
 const TOKENS = require("../../../../../data/tokens.json");
+const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 interface IExternalProps {
   daoAvatarAddress: string;
@@ -105,7 +106,8 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
 
     return (
       <Field id={name} name={name} component="select" placeholder="Choose an ERC20 token" className={touched[name] && errors[name] ? css.error : null}>
-        <option value="" disabled selected>Choose an ERC20 token</option>
+        <option value="" disabled selected>Choose ETH or an ERC20 token</option>
+        <option value={NULL_ADDRESS}>ETH</option>
         {
           tokens.map(token => {
             return (<option key={token[0] as string} value={token[0] as string}>{(token[1] as IToken).symbol}</option>);
