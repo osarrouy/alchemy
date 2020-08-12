@@ -15,7 +15,7 @@ import { NotificationStatus, showNotification } from "reducers/notifications";
 import * as arcActions from "actions/arcActions";
 
 import Analytics from "lib/analytics";
-import { isValidUrl, targetedNetwork } from "lib/util";
+import { isValidUrl, targetedNetwork, toBaseUnit } from "lib/util";
 import { exportUrl, importUrlValues } from "lib/proposalUtils";
 
 import TagsSelector from "components/Proposal/Create/SchemeForms/TagsSelector";
@@ -116,6 +116,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
   }
 
   private handleSubmit = async (values: IFormValues, { setSubmitting }: any ): Promise<void> => {
+    const tokens = TOKENS[targetedNetwork()].tokens;
 
     if (!await enableWalletProvider({ showNotification: this.props.showNotification })) { return; }
 
@@ -123,9 +124,21 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     const callValues = [];
 
     for (const field of currentAction.getFields()) {
-      const callValue = field.callValue(values[field.name]);
-      values[field.name] = callValue;
-      callValues.push(callValue);
+      if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "swap" && field.name === "_amount") {
+        // TODO. also handle the case where from token is ETH
+        // auto-handle _amount decimals
+        const callValue = field.callValue(toBaseUnit(values["_amount"], tokens[values["_from"]].decimals).toString());
+        callValues.push(callValue);
+      } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "swap" && field.name === "_expected") {
+        // auto-handle _expected decimals
+        const callValue = field.callValue(toBaseUnit(values["_expected"], tokens[values["_to"]].decimals).toString());
+        callValues.push(callValue);
+      }
+      else {
+        const callValue = field.callValue(values[field.name]);
+        values[field.name] = callValue;
+        callValues.push(callValue);
+      }
     }
 
     let callData = "";

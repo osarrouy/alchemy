@@ -32,15 +32,11 @@
         {
           "label": "Amount of tokens / ETH to swap",
           "name": "_amount",
-          "decimals": 18,
-          "unit": "tokens / ETH",
           "placeholder": "2000"
         },
         {
           "label": "Mimimum amount of tokens / ETH to be returned",
           "name": "_expected",
-          "decimals": 18,
-          "unit": "tokens / ETH",
           "placeholder": "50"
         }
       ],
