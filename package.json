@@ -75,7 +75,7 @@
     "test:integration": "wdio ./test/integration/wdio.conf.js --inspect",
     "test:integration:headless": "wdio ./test/integration/wdio-headless.conf.js",
     "test:unit": "jest",
-    "build:rinkeby": "NODE_ENV=production NETWORK=rinkeby node --max_old_space_size=4096 node_modules/.bin/webpack --config webpack.prod.config.js"
+    "build:rinkeby": "NODE_ENV=production SHOW_ALL_DAOS=true NETWORK=rinkeby node --max_old_space_size=4096 node_modules/.bin/webpack --config webpack.prod.config.js"
   },
   "dependencies": {
     "3box": "1.17.1",
