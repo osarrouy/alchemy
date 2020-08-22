@@ -3,13 +3,13 @@
   "name": "Uniswap",
   "addresses": {
     "main": [
-      "0xbd9A61d72be109605F2bD5ac26ede00ccb8e5051"
+      "0xE115f06D1DF7526D4cdbcffb9395399Af0620039"
     ],
     "rinkeby": [
-      "0xbd9A61d72be109605F2bD5ac26ede00ccb8e5051"
+      "0x50AE25C926176D71F41A27Fe97fa4A7c31207131"
     ],
     "private": [
-      "0x03D95E1760893Abc882F6840c5765710d116991F"
+      "0xE115f06D1DF7526D4cdbcffb9395399Af0620039"
     ]
   },
   "actions": [
