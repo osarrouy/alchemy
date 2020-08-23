@@ -43,8 +43,8 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
 
     switch (action.id) {
       case "swap": {
-        const from = TOKENS[targetedNetwork()].tokens[decodedCallData.values[0]] || NA;
-        const to = TOKENS[targetedNetwork()].tokens[decodedCallData.values[1]] || NA;
+        const from = TOKENS[targetedNetwork()].tokens[decodedCallData.values[0].toLowerCase()] || NA;
+        const to = TOKENS[targetedNetwork()].tokens[decodedCallData.values[1].toLowerCase()] || NA;
         const amount = decodedCallData.values[2];
         const expected = decodedCallData.values[3];
 

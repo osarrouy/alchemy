@@ -3,39 +3,37 @@
   "name": "Uniswap",
   "addresses": {
     "main": [
-      "0xE115f06D1DF7526D4cdbcffb9395399Af0620039"
+      ""
     ],
     "rinkeby": [
       "0x50AE25C926176D71F41A27Fe97fa4A7c31207131"
     ],
     "private": [
-      "0xE115f06D1DF7526D4cdbcffb9395399Af0620039"
+      ""
     ]
   },
   "actions": [
     {
       "id": "swap",
-      "label": "Swap tokens and / or ETH",
-      "description": "Some fancy explanation",
-      "notes": "coming soon",
+      "label": "Swap",
+      "description": "Swap ETH or ERC20 tokens through the UniswapV2 automated market-maker.",
+      "notes": "Coming soon.",
       "fields": [
         {
           "label": "From",
-          "name": "_from",
-          "placeholder": "ERC20 address or 0x00... for ETH"
+          "name": "_from"
         },
         {
           "label": "To",
-          "name": "_to",
-          "placeholder": "ERC20 address or 0x00... for ETH"
+          "name": "_to"
         },
         {
-          "label": "Amount of tokens / ETH to swap",
+          "label": "Amount of ETH / tokens to swap",
           "name": "_amount",
           "placeholder": "2000"
         },
         {
-          "label": "Mimimum amount of tokens / ETH to be returned",
+          "label": "Mimimum amount of ETH / tokens to be returned [reverts otherwise]",
           "name": "_expected",
           "placeholder": "50"
         }
@@ -73,8 +71,8 @@
     },
     {
       "id": "seed",
-      "label": "Seed liquidity",
-      "description": "Seed liquidity in a Uniswap pair",
+      "label": "Seed",
+      "description": "Seed liquidity in a UniswapV2 pair.",
       "notes": "coming soon",
       "fields": [],
       "abi": {
