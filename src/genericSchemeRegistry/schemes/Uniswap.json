@@ -70,15 +70,66 @@
       }
     },
     {
-      "id": "seed",
-      "label": "Seed",
-      "description": "Seed liquidity in a UniswapV2 pair.",
-      "notes": "coming soon",
-      "fields": [],
+      "id": "pool",
+      "label": "Pool",
+      "description": "Pool liquidity in a UniswapV2 pair.",
+      "notes": "Coming soon.",
+      "fields": [
+        {
+          "label": "First token",
+          "name": "_token1"
+        },
+        {
+          "label": "Second token",
+          "name": "_token2"
+        },
+        {
+          "label": "Amount of the first token to pool [amount for the second token is computed automatically]",
+          "name": "_amount1",
+          "defaultValue": 0,
+          "placeholder": "2000"
+        },
+        {
+          "label": "Amount of second token to pool",
+          "name": "_amount2",
+          "placeholder": "50"
+        },
+        {
+          "label": "Allowed slippage [in %]",
+          "name": "_slippage",
+          "placeholder": "5"
+        }
+      ],
       "abi": {
         "constant": false,
-        "inputs": [],
-        "name": "approve",
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_token1",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "_token2",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount1",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount2",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_slippage",
+            "type": "uint256"
+          }
+        ],
+        "name": "pool",
         "outputs": [],
         "payable": false,
         "stateMutability": "nonpayable",

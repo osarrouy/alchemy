@@ -3,6 +3,14 @@
   @import "../../../../node_modules/react-datetime/css/react-datetime";
 }
 
+.uniswapInformations {
+  background-color: rgba(231, 240, 255, 1.000);
+  border-radius: 3px;
+  font-size: 0.8em;
+  margin-top: 15px;
+  padding: 15px;
+}
+
 .hidden {
   display: none !important;
 }

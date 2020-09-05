@@ -24,9 +24,12 @@ import * as css from "../CreateProposal.scss";
 import MarkdownField from "./MarkdownField";
 import HelpButton from "components/Shared/HelpButton";
 
+import { ChainId, Token, /*WETH,*/ Fetcher, Route } from "@uniswap/sdk";
+
 const BN = require("bn.js");
 const TOKENS = require("../../../../../data/tokens.json");
 const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
+const PPM = new BN("1000000");
 
 interface IExternalProps {
   daoAvatarAddress: string;
@@ -62,6 +65,8 @@ interface IState {
   actions: Action[];
   currentAction: Action;
   tags: Array<string>;
+  price: string;
+  invertedPrice: string;
 }
 
 interface IToken {
@@ -85,6 +90,8 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
       actions: props.genericSchemeInfo.actions(),
       currentAction: initialActionId ? actions.find(action => action.id === initialActionId) : actions[0],
       tags: this.initialFormValues.tags,
+      price: "0",
+      invertedPrice: "0",
     };
   }
 
@@ -134,6 +141,15 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
       } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "swap" && field.name === "_expected") {
         // auto-handle _expected decimals
         const callValue = field.callValue(toBaseUnit(values["_expected"], tokens[values["_to"]].decimals).toString());
+        callValues.push(callValue);
+      } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool" && field.name === "_amount1") {
+        const callValue = field.callValue(toBaseUnit(values["_amount1"], tokens[values["_token1"]].decimals).toString());
+        callValues.push(callValue);
+      } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool" && field.name === "_amount2") {
+        const callValue = field.callValue((toBaseUnit(values["_amount1"], tokens[values["_token1"]].decimals).mul(new BN(this.state.price))).toString());
+        callValues.push(callValue);
+      } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool" && field.name === "_slippage") {
+        const callValue = field.callValue((new BN(values["_slippage"]).mul(PPM)).toString());
         callValues.push(callValue);
       }
       else {
@@ -191,8 +207,42 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     this.setState({ currentAction: this.props.genericSchemeInfo.action(tab) });
   }
 
+  private fetchPrice = (token1: string, token2: string): any => {
+    let NETWORK: number;
+    const tokens = TOKENS[targetedNetwork()].tokens;
+
+    if (token1 !== "" && token2 !== "") {
+      switch (targetedNetwork()) {
+        case "rinkeby":
+          NETWORK = ChainId.RINKEBY;
+          break;
+        default:
+          NETWORK = ChainId.MAINNET;
+      }
+
+      const TOKEN1 = new Token(NETWORK, token1, tokens[token1].decimals);
+      const TOKEN2 = new Token(NETWORK, token2, tokens[token2].decimals);
+
+      Fetcher.fetchPairData(TOKEN1, TOKEN2).then((pair) => {
+        const route = new Route([pair], TOKEN1);
+        this.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
+      });
+    }
+  }
+
+  private isUniswapPoolAction = (): boolean => {
+    return this.props.genericSchemeInfo.specs.name === "Uniswap" && this.state.currentAction.id === "pool";
+  }
+
   public renderField(field: ActionField, values: IFormValues, touched: FormikTouched<IFormValues>, errors: FormikErrors<IFormValues>) {
+    const tokens = TOKENS[targetedNetwork()].tokens;
+
+    if (this.isUniswapPoolAction()) {
+      this.fetchPrice(values["_token1"], values["_token2"]);
+    }
+
     const type = "string";
+
     switch (field.type) {
       case "bool":
         return <div className={css.radioButtons}>
@@ -224,6 +274,45 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         }
         if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_to") {
           return this.tokensField("_to", touched, errors);
+        }
+        if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_token1") {
+          return this.tokensField("_token1", touched, errors);
+        }
+        if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_token2") {
+          return this.tokensField("_token2", touched, errors);
+        }
+
+        if (this.isUniswapPoolAction() && field.name === "_slippage") {
+          return (
+            <div>
+              <Field
+                id={field.name}
+                data-test-id={field.name}
+                placeholder={field.placeholder}
+                name={field.name}
+                type={type}
+                className={touched[field.name] && errors[field.name] ? css.error : null}
+              />
+              {values["_token1"] !== "" && values["_token2"] !== "" &&
+                <div className={css.uniswapInformations}>
+                  <b>Pool</b>
+                  <pre>
+                    {values["_amount1"]} {tokens[values["_token1"]].symbol}
+                  </pre>
+                  <pre>
+                    {values["_amount1"] * Number(this.state.price)} {tokens[values["_token2"]].symbol}
+                  </pre>
+                  <b>Price</b>
+                  <pre>
+                    {this.state.price} {tokens[values["_token2"]].symbol} / {tokens[values["_token1"]].symbol}
+                  </pre>
+                  <pre>
+                    {this.state.invertedPrice} {tokens[values["_token1"]].symbol} / {tokens[values["_token2"]].symbol}
+                  </pre>
+                </div>
+              }
+            </div>
+          );
         }
         if (field.type.includes("[]")) {
           // eslint-disable-next-line react/jsx-no-bind
@@ -310,6 +399,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     }));
     this.initialFormValues = importUrlValues<IFormValues>(this.initialFormValues);
   }
+
   public exportFormValues(values: IFormValues) {
     values = {
       ...values,
@@ -326,6 +416,29 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
 
     const actions = this.state.actions;
     const currentAction = this.state.currentAction;
+
+
+
+    if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool") {
+      let NETWORK;
+
+      switch (targetedNetwork()) {
+        case "rinkeby":
+          NETWORK = ChainId.RINKEBY;
+          break;
+        default:
+          NETWORK = ChainId.MAINNET;
+      }
+
+      // const token1 = new Token(NETWORK, '0x6B175474E89094C44Da98b954EedeAC495271d0F', 18);
+      console.log(currentAction);
+      console.log(this.state.currentAction.getFields());
+      console.log(this.props);
+      console.log(ChainId);
+      console.log("tarfeted");
+      console.log(targetedNetwork());
+      console.log(NETWORK);
+    }
 
     return (
       <div className={css.containerWithSidebar}>
@@ -416,6 +529,12 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                     errors[field.name] = "Must contain only digits";
                   }
                 }
+
+                if (this.isUniswapPoolAction() && field.name === "_slippage") {
+                  if (value < 0 || value > 100) {
+                    errors[field.name] = "Please provide a valid percentage between 0 and 100";
+                  }
+                }
               }
               return errors;
             }}
@@ -495,16 +614,18 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   >
                     {
                       currentAction.getFields().map((field: ActionField) => {
-                        return (
-                          <div key={field.name}>
-                            <label htmlFor={field.name}>
-                              {field.type !== "bool" && !field.optional ? <div className={css.requiredMarker}>*</div> : ""}
-                              { field.label }
-                              <ErrorMessage name={field.name}>{(msg) => <span className={css.errorMessage}>{msg}</span>}</ErrorMessage>
-                            </label>
-                            {this.renderField(field, values, touched, errors)}
-                          </div>
-                        );
+                        if (!(this.isUniswapPoolAction() && field.name === "_amount2")) {
+                          return (
+                            <div key={field.name}>
+                              <label htmlFor={field.name}>
+                                {field.type !== "bool" && !field.optional ? <div className={css.requiredMarker}>*</div> : ""}
+                                { field.label }
+                                <ErrorMessage name={field.name}>{(msg) => <span className={css.errorMessage}>{msg}</span>}</ErrorMessage>
+                              </label>
+                              {this.renderField(field, values, touched, errors)}
+                            </div>
+                          );
+                        }
                       })
                     }
                   </div>
