@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-bind */
 
 import * as React from "react";
 import { connect } from "react-redux";
@@ -108,23 +109,37 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     return ethToSend;
   }
 
-  private tokensField = (name: string, touched: FormikTouched<IFormValues>, errors: FormikErrors<IFormValues>) => {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  private tokensField = (name: string, touched: FormikTouched<IFormValues>, errors: FormikErrors<IFormValues>, action: string) => {
     const tokens: Array<Array<string | IToken>> = Object.entries(TOKENS[targetedNetwork()].tokens);
 
     return (
-      <Field id={name} name={name} component="select" placeholder="Choose an ERC20 token" className={touched[name] && errors[name] ? css.error : null}>
-        <option value="" disabled selected>Choose ETH or an ERC20 token</option>
-        <option value={NULL_ADDRESS}>ETH</option>
-        {
-          tokens.map(token => {
-            return (<option key={token[0] as string} value={token[0] as string}>{(token[1] as IToken).symbol}</option>);
-          })
-        }
+      <Field id={name} name={name} className={touched[name] && errors[name] ? css.error : null}>
+        {({ field, form, meta }: any ) => (
+          <div>
+            <select id={name} name={name} placeholder="Choose ETH or an ERC20 token" onChange={(e) => {
+              form.handleChange(e); console.log(field); console.log(meta); console.log(e); console.log(e.target.value);
+              const values = form.values;
+              values[e.target.id] = (document.getElementById(e.target.id) as HTMLInputElement).value;
+              this.fetchPrice(action, values);
+            }}>
+              <option value="" disabled selected>Choose ETH or an ERC20 token</option>
+              <option value={NULL_ADDRESS}>ETH</option>
+              {
+                tokens.map(token => {
+                  return (<option key={token[0] as string} value={token[0] as string}>{(token[1] as IToken).symbol}</option>);
+                })
+              }
+            </select>
+          </div>
+        )}
       </Field>
     );
   }
 
   private handleSubmit = async (values: IFormValues, { setSubmitting }: any ): Promise<void> => {
+    console.log('Hnadling Submit');
+
     const tokens = TOKENS[targetedNetwork()].tokens;
 
     if (!await enableWalletProvider({ showNotification: this.props.showNotification })) { return; }
@@ -158,6 +173,8 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         callValues.push(callValue);
       }
     }
+
+    console.log('Hnadling Submit');
 
     let callData = "";
     try {
@@ -207,11 +224,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     this.setState({ currentAction: this.props.genericSchemeInfo.action(tab) });
   }
 
-  private fetchPrice = (token1: string, token2: string): any => {
+  private fetchPrice = (action: string, values: any): any => {
+    console.log("values from Fetch price");
+    console.log(values);
+
     let NETWORK: number;
     const tokens = TOKENS[targetedNetwork()].tokens;
 
-    if (token1 !== "" && token2 !== "") {
+    if (action === "pool" && values["_token1"] !== "" && values["_token2"] !== "") {
       switch (targetedNetwork()) {
         case "rinkeby":
           NETWORK = ChainId.RINKEBY;
@@ -220,15 +240,45 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
           NETWORK = ChainId.MAINNET;
       }
 
-      const TOKEN1 = new Token(NETWORK, token1, tokens[token1].decimals);
-      const TOKEN2 = new Token(NETWORK, token2, tokens[token2].decimals);
+      const TOKEN1 = new Token(NETWORK, values["_token1"], tokens[values["_token1"]].decimals);
+      const TOKEN2 = new Token(NETWORK, values["_token2"], tokens[values["_token2"]].decimals);
+      console.log(TOKEN1);
 
       Fetcher.fetchPairData(TOKEN1, TOKEN2).then((pair) => {
         const route = new Route([pair], TOKEN1);
+        console.log("Price " + route.midPrice.toSignificant(6));
         this.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
       });
     }
   }
+
+  // private fetchPrice = (token1: string, token2: string): any => {
+  //   // const { values } = useFormikContext();
+
+  //   // console.log("values from Formik");
+  //   // console.log(values);
+
+  //   let NETWORK: number;
+  //   const tokens = TOKENS[targetedNetwork()].tokens;
+
+  //   if (token1 !== "" && token2 !== "") {
+  //     switch (targetedNetwork()) {
+  //       case "rinkeby":
+  //         NETWORK = ChainId.RINKEBY;
+  //         break;
+  //       default:
+  //         NETWORK = ChainId.MAINNET;
+  //     }
+
+  //     const TOKEN1 = new Token(NETWORK, token1, tokens[token1].decimals);
+  //     const TOKEN2 = new Token(NETWORK, token2, tokens[token2].decimals);
+
+  //     Fetcher.fetchPairData(TOKEN1, TOKEN2).then((pair) => {
+  //       const route = new Route([pair], TOKEN1);
+  //       this.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
+  //     });
+  //   }
+  // }
 
   private isUniswapPoolAction = (): boolean => {
     return this.props.genericSchemeInfo.specs.name === "Uniswap" && this.state.currentAction.id === "pool";
@@ -237,9 +287,9 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
   public renderField(field: ActionField, values: IFormValues, touched: FormikTouched<IFormValues>, errors: FormikErrors<IFormValues>) {
     const tokens = TOKENS[targetedNetwork()].tokens;
 
-    if (this.isUniswapPoolAction()) {
-      this.fetchPrice(values["_token1"], values["_token2"]);
-    }
+    // if (this.isUniswapPoolAction()) {
+    //   this.fetchPrice(values["_token1"], values["_token2"]);
+    // }
 
     const type = "string";
 
@@ -270,17 +320,28 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         </div>;
       default:
         if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_from") {
-          return this.tokensField("_from", touched, errors);
+          return this.tokensField("_from", touched, errors, "swap");
         }
         if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_to") {
-          return this.tokensField("_to", touched, errors);
+          return this.tokensField("_to", touched, errors, "swap");
         }
         if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_token1") {
-          return this.tokensField("_token1", touched, errors);
+          return this.tokensField("_token1", touched, errors, "pool");
         }
         if (this.props.genericSchemeInfo.specs.name === "Uniswap" && field.name === "_token2") {
-          return this.tokensField("_token2", touched, errors);
+          return this.tokensField("_token2", touched, errors, "pool");
         }
+        if (this.isUniswapPoolAction() && field.name === "_amount2") {
+          return <Field
+            id={field.name}
+            data-test-id={field.name}
+            placeholder={field.placeholder}
+            name={field.name}
+            type={type}
+            className={css.hidden}
+          />;
+        }
+
 
         if (this.isUniswapPoolAction() && field.name === "_slippage") {
           return (
@@ -622,6 +683,12 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                                 { field.label }
                                 <ErrorMessage name={field.name}>{(msg) => <span className={css.errorMessage}>{msg}</span>}</ErrorMessage>
                               </label>
+                              {this.renderField(field, values, touched, errors)}
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div key={field.name}>
                               {this.renderField(field, values, touched, errors)}
                             </div>
                           );

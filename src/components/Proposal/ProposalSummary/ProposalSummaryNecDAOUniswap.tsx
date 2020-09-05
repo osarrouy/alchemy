@@ -8,6 +8,7 @@ import { formatTokens, targetedNetwork } from "lib/util";
 import * as React from "react";
 import * as css from "./ProposalSummary.scss";
 const TOKENS = require("../../../../data/tokens.json");
+const PPM = new BN("1000000");
 
 interface IProps {
   genericSchemeInfo: GenericSchemeInfo;
@@ -67,6 +68,40 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
                   </p>
                   <pre>
                     {formatTokens(new BN(expected), to.symbol, to.decimals)}.
+                  </pre>
+                </div>
+              </div>
+              : ""
+            }
+          </div>
+        );
+      }
+      case "pool": {
+        const token1 = TOKENS[targetedNetwork()].tokens[decodedCallData.values[0].toLowerCase()] || NA;
+        const token2 = TOKENS[targetedNetwork()].tokens[decodedCallData.values[1].toLowerCase()] || NA;
+        const amount1 = decodedCallData.values[2];
+        const amount2 = decodedCallData.values[3];
+        const slippage = (new BN(decodedCallData.values[4])).div(PPM).toString();
+
+        return (
+          <div className={proposalSummaryClass}>
+            <span className={css.summaryTitle}>
+              {action.label}
+            </span>
+            { detailView ?
+              <div className={css.summaryDetails}>
+                <div>
+                  <p>
+                    Executing this proposal will pool
+                  </p>
+                  <pre>
+                    {formatTokens(new BN(amount1), token1.symbol, token1.decimals)} and {formatTokens(new BN(amount2), token2.symbol, token2.decimals)}.
+                  </pre>
+                  <p>
+                    Transaction will revert if the price slippage exceeds
+                  </p>
+                  <pre>
+                    { slippage } %.
                   </pre>
                 </div>
               </div>

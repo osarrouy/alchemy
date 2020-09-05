@@ -16,7 +16,7 @@
     {
       "id": "swap",
       "label": "Swap",
-      "description": "Swap ETH or ERC20 tokens through the UniswapV2 automated market-maker.",
+      "description": "Swap ETH or ERC20 tokens through UniswapV2",
       "notes": "Coming soon.",
       "fields": [
         {
@@ -72,7 +72,7 @@
     {
       "id": "pool",
       "label": "Pool",
-      "description": "Pool liquidity in a UniswapV2 pair.",
+      "description": "Pool liquidity in a UniswapV2 pair",
       "notes": "Coming soon.",
       "fields": [
         {
@@ -92,6 +92,7 @@
         {
           "label": "Amount of second token to pool",
           "name": "_amount2",
+          "defaultValue": 0,
           "placeholder": "50"
         },
         {
