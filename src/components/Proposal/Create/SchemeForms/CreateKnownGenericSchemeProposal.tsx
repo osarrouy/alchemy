@@ -161,7 +161,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         const callValue = field.callValue(toBaseUnit(values["_amount1"], tokens[values["_token1"]].decimals).toString());
         callValues.push(callValue);
       } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool" && field.name === "_amount2") {
-        const callValue = field.callValue((toBaseUnit(values["_amount1"], tokens[values["_token1"]].decimals).mul(new BN(this.state.price))).toString());
+        const callValue = field.callValue(toBaseUnit((values["_amount1"] * Number(this.state.price)).toString(), tokens[values["_token2"]].decimals).toString());
         callValues.push(callValue);
       } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool" && field.name === "_slippage") {
         const callValue = field.callValue((new BN(values["_slippage"]).mul(PPM)).toString());
