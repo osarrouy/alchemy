@@ -16,7 +16,7 @@
     {
       "id": "swap",
       "label": "Swap",
-      "description": "Swap ETH or ERC20 tokens through UniswapV2",
+      "description": "Swap ETH or tokens with Uniswap",
       "notes": "Coming soon.",
       "fields": [
         {
@@ -28,7 +28,7 @@
           "name": "_to"
         },
         {
-          "label": "Amount of ETH / tokens to swap",
+          "label": "Amount of ETH or tokens to swap",
           "name": "_amount",
           "placeholder": "2000"
         },
@@ -72,7 +72,7 @@
     {
       "id": "pool",
       "label": "Pool",
-      "description": "Pool liquidity in a UniswapV2 pair",
+      "description": "Pool liquidity in a Uniswap V2 exchange pair",
       "notes": "Coming soon.",
       "fields": [
         {
@@ -84,7 +84,7 @@
           "name": "_token2"
         },
         {
-          "label": "Amount of the first token to pool [amount for the second token is computed automatically]",
+          "label": "Amount of the first token to pool. The amount of the second token is calculated automatically. If the DAO does not have enough tokens, use the Swap mechanic to exchange tokens.",
           "name": "_amount1",
           "defaultValue": 0,
           "placeholder": "2000"
@@ -96,7 +96,7 @@
           "placeholder": "50"
         },
         {
-          "label": "Allowed slippage [in %]",
+          "label": "Allowed slippage, in percent (%). It is recommended to set this to at minimum, 2%, as there may be market movement that occurs between the submission and passing of this proposal.",
           "name": "_slippage",
           "placeholder": "5"
         }
