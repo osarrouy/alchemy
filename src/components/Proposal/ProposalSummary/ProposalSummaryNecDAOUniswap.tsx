@@ -8,7 +8,7 @@ import { formatTokens, targetedNetwork } from "lib/util";
 import * as React from "react";
 import * as css from "./ProposalSummary.scss";
 const TOKENS = require("../../../../data/tokens.json");
-const PPM = new BN("1000000");
+const PCT_BASE = new BN("10000");
 
 interface IProps {
   genericSchemeInfo: GenericSchemeInfo;
@@ -81,7 +81,7 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
         const token2 = TOKENS[targetedNetwork()].tokens[decodedCallData.values[1].toLowerCase()] || NA;
         const amount1 = decodedCallData.values[2];
         const amount2 = decodedCallData.values[3];
-        const slippage = (new BN(decodedCallData.values[4])).div(PPM).toString();
+        const slippage = (new BN(decodedCallData.values[4])).div(PCT_BASE).toString();
 
         return (
           <div className={proposalSummaryClass}>

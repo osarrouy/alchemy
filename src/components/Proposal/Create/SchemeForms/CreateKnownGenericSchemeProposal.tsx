@@ -30,7 +30,7 @@ import { ChainId, Token, /*WETH,*/ Fetcher, Route } from "@uniswap/sdk";
 const BN = require("bn.js");
 const TOKENS = require("../../../../../data/tokens.json");
 const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
-const PPM = new BN("1000000");
+const PCT_BASE = new BN("10000");
 
 interface IExternalProps {
   daoAvatarAddress: string;
@@ -164,7 +164,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         const callValue = field.callValue(toBaseUnit((values["_amount1"] * Number(this.state.price)).toString(), tokens[values["_token2"]].decimals).toString());
         callValues.push(callValue);
       } else if (this.props.genericSchemeInfo.specs.name === "Uniswap" && currentAction.id === "pool" && field.name === "_slippage") {
-        const callValue = field.callValue((new BN(values["_slippage"]).mul(PPM)).toString());
+        const callValue = field.callValue((new BN(values["_slippage"])).mul(PCT_BASE).toString());
         callValues.push(callValue);
       }
       else {
