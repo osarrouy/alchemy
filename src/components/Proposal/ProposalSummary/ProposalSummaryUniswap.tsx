@@ -7,8 +7,10 @@ import { formatTokens, targetedNetwork } from "lib/util";
 
 import * as React from "react";
 import * as css from "./ProposalSummary.scss";
+
+const BigNum = require("bignumber.js");
 const TOKENS = require("../../../../data/tokens.json");
-const PCT_BASE = new BN("10000");
+const PCT_BASE = new BigNum("10000");
 
 interface IProps {
   genericSchemeInfo: GenericSchemeInfo;
@@ -17,7 +19,12 @@ interface IProps {
   transactionModal?: boolean;
 }
 
-const NA = { symbol: "N/A", decimals: 18 };
+const toUniswapToken = (address: string) => {
+  const NA = { symbol: "N/A", decimals: 18 };
+  const tokens = { "0x0000000000000000000000000000000000000000": { symbol: "ETH", decimals: 18 }, ...TOKENS[targetedNetwork()].tokens};
+
+  return tokens[address.toLowerCase()] || NA;
+};
 
 export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps, null> {
 
@@ -44,15 +51,15 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
 
     switch (action.id) {
       case "swap": {
-        const from = TOKENS[targetedNetwork()].tokens[decodedCallData.values[0].toLowerCase()] || NA;
-        const to = TOKENS[targetedNetwork()].tokens[decodedCallData.values[1].toLowerCase()] || NA;
-        const amount = decodedCallData.values[2];
-        const expected = decodedCallData.values[3];
+        const from = toUniswapToken(decodedCallData.values[0]);
+        const to = toUniswapToken(decodedCallData.values[1]);
+        const amount = new BN(decodedCallData.values[2]);
+        const expected = new BN(decodedCallData.values[3]);
 
         return (
           <div className={proposalSummaryClass}>
             <span className={css.summaryTitle}>
-              {action.label}
+              {action.label} {from.symbol} for {to.symbol}
             </span>
             { detailView ?
               <div className={css.summaryDetails}>
@@ -61,13 +68,13 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
                     Executing this proposal will swap
                   </p>
                   <pre>
-                    {formatTokens(new BN(amount), from.symbol, from.decimals)} to {to.symbol}.
+                    {formatTokens(amount, from.symbol, from.decimals)} to {to.symbol}.
                   </pre>
                   <p>
                     Transaction will revert if the swap returns less than
                   </p>
                   <pre>
-                    {formatTokens(new BN(expected), to.symbol, to.decimals)}.
+                    {formatTokens(expected, to.symbol, to.decimals)}.
                   </pre>
                 </div>
               </div>
@@ -77,16 +84,16 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
         );
       }
       case "pool": {
-        const token1 = TOKENS[targetedNetwork()].tokens[decodedCallData.values[0].toLowerCase()] || NA;
-        const token2 = TOKENS[targetedNetwork()].tokens[decodedCallData.values[1].toLowerCase()] || NA;
-        const amount1 = decodedCallData.values[2];
-        const amount2 = decodedCallData.values[3];
-        const slippage = (new BN(decodedCallData.values[4])).div(PCT_BASE).toString();
+        const token1 = toUniswapToken(decodedCallData.values[0]);
+        const token2 = toUniswapToken(decodedCallData.values[1]);
+        const amount1 = new BN(decodedCallData.values[2]);
+        const amount2 = new BN(decodedCallData.values[3]);
+        const slippage = (new BigNum(decodedCallData.values[4])).div(PCT_BASE).toString();
 
         return (
           <div className={proposalSummaryClass}>
             <span className={css.summaryTitle}>
-              {action.label}
+              {action.label} {token1.symbol}/{token2.symbol}
             </span>
             { detailView ?
               <div className={css.summaryDetails}>
@@ -95,7 +102,7 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
                     Executing this proposal will pool
                   </p>
                   <pre>
-                    {formatTokens(new BN(amount1), token1.symbol, token1.decimals)} and {formatTokens(new BN(amount2), token2.symbol, token2.decimals)}.
+                    {formatTokens(amount1, token1.symbol, token1.decimals)} and {formatTokens(amount2, token2.symbol, token2.decimals)}.
                   </pre>
                   <p>
                     Transaction will revert if the price slippage exceeds

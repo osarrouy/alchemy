@@ -17,7 +17,6 @@
       "id": "swap",
       "label": "Swap",
       "description": "Swap ETH or tokens with Uniswap",
-      "notes": "Coming soon.",
       "fields": [
         {
           "label": "From",
@@ -30,12 +29,14 @@
         {
           "label": "Amount of ETH or tokens to swap",
           "name": "_amount",
-          "placeholder": "2000"
+          "defaultValue": 0,
+          "placeholder": "0"
         },
         {
-          "label": "Mimimum amount of ETH / tokens to be returned [reverts otherwise]",
+          "label": "Allowed slippage, in percent (%). It is recommended to set this to at minimum, 2%, as there may be market movement that occurs between the submission and passing of this proposal.",
           "name": "_expected",
-          "placeholder": "50"
+          "defaultValue": 5,
+          "placeholder": "5"
         }
       ],
       "abi": {
@@ -87,17 +88,18 @@
           "label": "Amount of the first token to pool. The amount of the second token is calculated automatically. If the DAO does not have enough tokens, use the Swap mechanic to exchange tokens.",
           "name": "_amount1",
           "defaultValue": 0,
-          "placeholder": "2000"
+          "placeholder": "0"
         },
         {
           "label": "Amount of second token to pool",
           "name": "_amount2",
           "defaultValue": 0,
-          "placeholder": "50"
+          "placeholder": "0"
         },
         {
           "label": "Allowed slippage, in percent (%). It is recommended to set this to at minimum, 2%, as there may be market movement that occurs between the submission and passing of this proposal.",
           "name": "_slippage",
+          "defaultValue": 5,
           "placeholder": "5"
         }
       ],
