@@ -4,6 +4,7 @@ import * as React from "react";
 import { connect } from "react-redux";
 import { IProposalType, ISchemeState } from "@daostack/arc.js";
 import { enableWalletProvider, getArc } from "arc";
+import { ethers } from "ethers";
 
 import { ErrorMessage, Field, FieldArray, Form, Formik, FormikErrors, FormikProps, FormikTouched } from "formik";
 import * as classNames from "classnames";
@@ -16,7 +17,7 @@ import { NotificationStatus, showNotification } from "reducers/notifications";
 import * as arcActions from "actions/arcActions";
 
 import Analytics from "lib/analytics";
-import { isValidUrl, targetedNetwork, toBaseUnit } from "lib/util";
+import { formatTokens, isValidUrl, targetedNetwork, toBaseUnit } from "lib/util";
 import { exportUrl, importUrlValues } from "lib/proposalUtils";
 
 import TagsSelector from "components/Proposal/Create/SchemeForms/TagsSelector";
@@ -30,6 +31,7 @@ import { ChainId, Token, WETH, Fetcher, Route, Trade, TokenAmount, TradeType } f
 const BN = require("bn.js");
 const BigNum = require("bignumber.js");
 const TOKENS = require("../../../../../data/tokens.json");
+const ERC20 = require("../../../../../data/ERC20.json");
 const PCT_BASE = new BigNum("10000");
 
 interface IExternalProps {
@@ -69,6 +71,9 @@ interface IState {
   price: string;
   invertedPrice: string;
   executionPrice: string;
+  liquidity: string;
+  liquidityReturn1: string;
+  liquidityReturn2: string;
 }
 
 interface IToken {
@@ -95,6 +100,9 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
       price: "0",
       invertedPrice: "0",
       executionPrice: "0",
+      liquidity: "0",
+      liquidityReturn1: "0",
+      liquidityReturn2: "0",
     };
   }
 
@@ -165,10 +173,12 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     );
   }
 
-  private fetchUniswapPrice = (action: string, values: any): any => {
-    const network = this.uniswapNetwork();
-
+  private fetchUniswapPrice = async (action: string, values: any): Promise<any> => {
     try {
+      const arc = getArc();
+      const provider = new ethers.providers.Web3Provider(arc.web3.currentProvider);
+      const network = this.uniswapNetwork();
+
       if (action === "pool" && values["_token1"] !== "" && values["_token2"] !== "") {
         const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;
         const _token2 = values["_token2"] !== "0x0000000000000000000000000000000000000000" ? values["_token2"] : WETH[network].address;
@@ -176,10 +186,10 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         const token1 = new Token(network, _token1, this.toUniswapToken(_token1).decimals);
         const token2 = new Token(network, _token2, this.toUniswapToken(_token2).decimals);
 
-        Fetcher.fetchPairData(token1, token2).then((pair) => {
-          const route = new Route([pair], token1);
-          this.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
-        });
+        const pair = await Fetcher.fetchPairData(token1, token2, provider);
+        const route = new Route([pair], token1);
+
+        this.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
       } else if (action === "swap" && values["_from"] !== "" && values["_to"] !== "") {
         const from = values["_from"] !== "0x0000000000000000000000000000000000000000" ? values["_from"] : WETH[network].address;
         const to = values["_to"] !== "0x0000000000000000000000000000000000000000" ? values["_to"] : WETH[network].address;
@@ -187,14 +197,36 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         const token1 = new Token(network, from, this.toUniswapToken(from).decimals);
         const token2 = new Token(network, to, this.toUniswapToken(to).decimals);
 
-        Fetcher.fetchPairData(token1, token2).then((pair) => {
-          const route = new Route([pair], token1);
-          const trade = new Trade(route, new TokenAmount(token1, this.toUniswapBaseUnit(token1.address, values["_amount"])), TradeType.EXACT_INPUT);
-          this.setState({executionPrice: trade.executionPrice.toSignificant(6)});
-        });
+        const pair = await Fetcher.fetchPairData(token1, token2, provider);
+        const route = new Route([pair], token1);
+        const trade = new Trade(route, new TokenAmount(token1, this.toUniswapBaseUnit(token1.address, values["_amount"])), TradeType.EXACT_INPUT);
+
+        this.setState({executionPrice: trade.executionPrice.toSignificant(6)});
+      } else if (action === "unpool" && values["_token1"] !== "" && values["_token2"] !== "") {
+        try {
+          const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;
+          const _token2 = values["_token2"] !== "0x0000000000000000000000000000000000000000" ? values["_token2"] : WETH[network].address;
+
+          const token1 = new Token(network, _token1, this.toUniswapToken(_token1).decimals);
+          const token2 = new Token(network, _token2, this.toUniswapToken(_token2).decimals);
+
+          const pair = await Fetcher.fetchPairData(token1, token2, provider);
+          const liquidity = new arc.web3.eth.Contract(ERC20, pair.liquidityToken.address);
+          const totalSupply = await liquidity.methods.totalSupply().call();
+          const balance = await liquidity.methods.balanceOf(this.props.daoAvatarAddress).call();
+
+          const liquidityReturn1 = await pair.getLiquidityValue(token1, new TokenAmount(pair.liquidityToken, totalSupply), new TokenAmount(pair.liquidityToken, balance));
+          const liquidityReturn2 = await pair.getLiquidityValue(token2, new TokenAmount(pair.liquidityToken, totalSupply), new TokenAmount(pair.liquidityToken, balance));
+
+          this.setState({ liquidity: balance, liquidityReturn1: liquidityReturn1.raw.toString(), liquidityReturn2: liquidityReturn2.raw.toString() });
+        }
+        catch (e) {
+          console.warn("Failed to fetch Uniswap data: " + e);
+          this.setState({ liquidity: "0", liquidityReturn1: "0", liquidityReturn2: "0" });
+        }
       }
     } catch (e) {
-      console.warn("Failed to fetch Uniswap price.");
+      console.warn("Failed to fetch Uniswap data: " + e);
     }
   }
 
@@ -202,7 +234,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     const _amount = new BigNum(this.toUniswapBaseUnit(from, amount));
     const _return = _amount.times(new BigNum(this.state.executionPrice));
     const _base = (new BigNum(10)).pow(new BigNum(this.toUniswapToken(to).decimals));
-    return _return.div(_base).toString();
+    return _return.div(_base).toFixed(0);
   }
 
   private computeMinimumUniswapSwapReturn = (from: string, to: string, amount: string, slippage: string) => {
@@ -211,7 +243,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     const _pct = (new BigNum(1)).minus((new BigNum(slippage)).dividedBy(new BigNum(100)));
     const _min = _return.times(_pct);
     const _base = (new BigNum(10)).pow(new BigNum(this.toUniswapToken(to).decimals));
-    return _min.div(_base).toString();
+    return _min.div(_base).toFixed(0);
+  }
+
+  private computePercentage = (value: string, percentage: string) => {
+    const _percentage = new BigNum(percentage);
+    const _hundred = new BigNum("100");
+    const _liquidity = new BigNum(value);
+    return _percentage.times(_liquidity).div(_hundred).toFixed(0);
   }
 
   private handleSubmit = async (values: IFormValues, { setSubmitting }: any ): Promise<void> => {
@@ -481,6 +520,89 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
             </div>
           );
         }
+        if (this.isUniswapField(field, "unpool", "_token1")) {
+          return this.uniswapTokensField("_token1", touched, errors, "unpool");
+        }
+        if (this.isUniswapField(field, "unpool", "_token2")) {
+          return this.uniswapTokensField("_token2", touched, errors, "unpool");
+        }
+        if (this.isUniswapField(field, "unpool", "_amount1")) {
+          const tokens = this.uniswapTokens();
+          return (
+            <div>
+              <Field id={field.name} name={field.name}>
+                {({ field, form }: any ) => (
+                  <input
+                    {...field}
+                    id={field.name}
+                    data-test-id={field.name}
+                    name={field.name}
+                    type="number"
+                    placeholder={field.placeholder}
+                    className={touched[field.name] && errors[field.name] ? css.error : null}
+                    onChange={(e) => {
+                      form.handleChange(e);
+                      const values = form.values;
+                      values["_amount1"] = e.target.value;
+                      this.fetchUniswapPrice("unpool", values);
+                    }}>
+                  </input>
+                )}
+              </Field>
+              {values["_token1"] !== "" && values["_token2"] !== "" &&
+                <div className={css.uniswapInformations}>
+                  <b>Unpool</b>
+                  <pre>
+                    {formatTokens(new BN(this.computePercentage(this.state.liquidity, values["_amount"])), tokens[values["_token1"]].symbol + " / " + tokens[values["_token2"]].symbol)} liquidity tokens
+                  </pre>
+                  <b>Expected returns</b>
+                  <pre>
+                    {formatTokens(new BN(this.computePercentage(this.state.liquidityReturn1, values["_amount"])), tokens[values["_token1"]].symbol, tokens[values["_token1"]].decimals)}
+                  </pre>
+                  <pre>
+                    {formatTokens(new BN(this.computePercentage(this.state.liquidityReturn2, values["_amount"])), tokens[values["_token2"]].symbol, tokens[values["_token2"]].decimals)}
+                  </pre>
+                </div>
+              }
+              {!(values["_token1"] !== "" && values["_token2"] !== "") &&
+                <div className={css.uniswapInformations}>
+                  <b>Unpool</b>
+                  <pre>
+                    Select a token pair first
+                  </pre>
+                  <b>Expected returns</b>
+                  <pre>
+                    Select a token pair first
+                  </pre>
+                </div>
+              }
+              {values["_token1"] !== "" && values["_token2"] !== "" &&
+                <div className={css.uniswapInformations}>
+                  <b>Current position</b>
+                  <pre>{formatTokens(new BN(this.state.liquidity), tokens[values["_token1"]].symbol + " / " + tokens[values["_token2"]].symbol)} liquidity tokens</pre>
+                  <pre>{formatTokens(new BN(this.state.liquidityReturn1), tokens[values["_token1"]].symbol, tokens[values["_token1"]].decimals)}</pre>
+                  <pre>{formatTokens(new BN(this.state.liquidityReturn2), tokens[values["_token2"]].symbol, tokens[values["_token2"]].decimals)}</pre>
+                </div>
+              }
+              {!(values["_token1"] !== "" && values["_token2"] !== "") &&
+                <div className={css.uniswapInformations}>
+                  <b>Current position</b>
+                  <pre>Select a token pair first</pre>
+                </div>
+              }
+            </div>
+          );
+        }
+        if (this.isUniswapField(field, "unpool", "_amount2")) {
+          return <Field
+            id={field.name}
+            data-test-id={field.name}
+            placeholder={field.placeholder}
+            name={field.name}
+            type={type}
+            className={css.hidden}
+          />;
+        }
         if (field.type.includes("[]")) {
           // eslint-disable-next-line react/jsx-no-bind
           return <FieldArray name={field.name} render={(arrayHelpers) => (
@@ -680,7 +802,13 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   }
                 }
 
-                if (this.isUniswapField(field, "swap", "_expected") || this.isUniswapField(field, "pool", "_slippage")) {
+                if (this.isUniswapField(field, "unpool", "_amount")) {
+                  if (value <= 0 || value > 100) {
+                    errors[field.name] = "Must contain a positive percentage";
+                  }
+                }
+
+                if (this.isUniswapField(field, "swap", "_expected") || this.isUniswapField(field, "pool", "_slippage") || this.isUniswapField(field, "unpool", "_amount1")) {
                   if (value < 0 || value > 100) {
                     errors[field.name] = "Must contain a valid percentage between 0 and 100";
                   }
@@ -764,7 +892,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   >
                     {
                       currentAction.getFields().map((field: ActionField) => {
-                        if (this.isUniswapField(field, "pool", "_amount2")) {
+                        if (this.isUniswapField(field, "pool", "_amount2") || this.isUniswapField(field, "unpool", "_amount2")) {
                           return (
                             <div key={field.name}>
                               {this.renderField(field, values, touched, errors)}

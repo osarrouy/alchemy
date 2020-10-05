@@ -1,4 +1,3 @@
-
 {
   "name": "Uniswap",
   "addresses": {
@@ -133,6 +132,75 @@
           }
         ],
         "name": "pool",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    },
+    {
+      "id": "unpool",
+      "label": "Unpool",
+      "description": "Unpool liquidity from a Uniswap V2 exchange pair",
+      "notes": "Coming soon.",
+      "fields": [
+        {
+          "label": "First token",
+          "name": "_token1"
+        },
+        {
+          "label": "Second token",
+          "name": "_token2"
+        },
+        {
+          "label": "Percentage of current liquidity to unpool",
+          "name": "_amount",
+          "defaultValue": 0,
+          "placeholder": "0"
+        },
+        {
+          "label": "Allowed slippage, in percent (%). It is recommended to set this to at minimum, 2%, as there may be market movement that occurs between the submission and passing of this proposal.",
+          "name": "_amount1",
+          "defaultValue": 0,
+          "placeholder": "0"
+        },
+        {
+          "label": "Expected return of token 2",
+          "name": "_amount2",
+          "defaultValue": 0,
+          "placeholder": "0"
+        }
+      ],
+      "abi": {
+        "constant": false,
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_token1",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "_token2",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount1",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_amount2",
+            "type": "uint256"
+          }
+        ],
+        "name": "unpool",
         "outputs": [],
         "payable": false,
         "stateMutability": "nonpayable",
