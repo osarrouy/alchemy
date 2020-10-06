@@ -246,6 +246,15 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     return _min.div(_base).toFixed(0);
   }
 
+  private computeMinimumUniswapUnpoolReturn = (max: string, percentage: string, slippage: string) => {
+    const _hundred = new BigNum("100");
+    const _slippage = new BigNum(slippage);
+    const _expected = new BigNum(this.computePercentage(max, percentage));
+
+    return _expected.times(_hundred.minus(_slippage)).div(_hundred).toFixed(0);
+
+  }
+
   private computePercentage = (value: string, percentage: string) => {
     const _percentage = new BigNum(percentage);
     const _hundred = new BigNum("100");
@@ -275,6 +284,15 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         callValues.push(callValue);
       } else if (this.isUniswapField(field, "pool", "_slippage")) {
         const callValue = field.callValue((new BigNum(values["_slippage"])).times(PCT_BASE).toString());
+        callValues.push(callValue);
+      } else if (this.isUniswapField(field, "unpool", "_amount")) {
+        const callValue = field.callValue(this.computePercentage(this.state.liquidity, values["_amount"]));
+        callValues.push(callValue);
+      } else if (this.isUniswapField(field, "unpool", "_amount1")) {
+        const callValue = field.callValue(this.computeMinimumUniswapUnpoolReturn(this.state.liquidityReturn1, values["_amount"], values["_amount1"]));
+        callValues.push(callValue);
+      } else if (this.isUniswapField(field, "unpool", "_amount2")) {
+        const callValue = field.callValue(this.computeMinimumUniswapUnpoolReturn(this.state.liquidityReturn2, values["_amount"], values["_amount1"]));
         callValues.push(callValue);
       }
       else {

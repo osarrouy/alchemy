@@ -93,7 +93,7 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
         return (
           <div className={proposalSummaryClass}>
             <span className={css.summaryTitle}>
-              {action.label} {token1.symbol}/{token2.symbol}
+              {action.label} {token1.symbol } / {token2.symbol}
             </span>
             { detailView ?
               <div className={css.summaryDetails}>
@@ -109,6 +109,40 @@ export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps
                   </p>
                   <pre>
                     { slippage } %.
+                  </pre>
+                </div>
+              </div>
+              : ""
+            }
+          </div>
+        );
+      }
+      case "unpool": {
+        const token1 = toUniswapToken(decodedCallData.values[0]);
+        const token2 = toUniswapToken(decodedCallData.values[1]);
+        const amount = new BN(decodedCallData.values[2]);
+        const min1 = new BN(decodedCallData.values[3]);
+        const min2 = new BN(decodedCallData.values[4]);
+
+        return (
+          <div className={proposalSummaryClass}>
+            <span className={css.summaryTitle}>
+              {action.label} {token1.symbol} / {token2.symbol}
+            </span>
+            { detailView ?
+              <div className={css.summaryDetails}>
+                <div>
+                  <p>
+                    Executing this proposal will unpool
+                  </p>
+                  <pre>
+                    {formatTokens(amount, token1.symbol + " / " + token2.symbol)} liquidity tokens.
+                  </pre>
+                  <p>
+                    Transaction will revert if unpooling returns less than
+                  </p>
+                  <pre>
+                    {formatTokens(min1, token1.symbol, token1.decimals)} and {formatTokens(min2, token2.symbol, token2.decimals)}.
                   </pre>
                 </div>
               </div>
