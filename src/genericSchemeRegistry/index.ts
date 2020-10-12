@@ -15,6 +15,7 @@ const co2kenInfo = require("./schemes/CO2ken.json");
 const dXTokenRegistry = require("./schemes/dXTokenRegistry.json");
 const dXswapGovernance = require("./schemes/DXswapGovernance.json");
 const uniswap = require("./schemes/Uniswap.json");
+const necBurn = require("./schemes/necBurn.json");
 
 
 const KNOWNSCHEMES = [
@@ -29,6 +30,7 @@ const KNOWNSCHEMES = [
   dXTokenRegistry,
   dXswapGovernance,
   uniswap,
+  necBurn,
 ];
 
 const SCHEMEADDRESSES: {[network: string]: { [address: string]: any}} = {
@@ -175,6 +177,13 @@ export class Action implements IActionSpec {
         name: this.abi.inputs[i].name,
         type: this.abi.inputs[i].type,
         ...this.fields[i],
+      }));
+    }
+    if (this.abi.name === "payFeesInEther") {
+      result.push(new ActionField({
+        name: "_amount",
+        type: "uint256",
+        ...this.fields[0],
       }));
     }
     return result;

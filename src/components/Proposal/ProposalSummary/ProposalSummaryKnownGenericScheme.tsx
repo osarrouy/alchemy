@@ -10,6 +10,7 @@ import ProposalSummaryDutchX from "./ProposalSummaryDutchX";
 import ProposalSummaryStandardBounties from "./ProposalSummaryStandardBounties";
 import ProposalSummaryCO2ken from "./ProposalSummaryCO2ken";
 import ProposalSummaryUniswap from "./ProposalSummaryUniswap";
+import ProposalSummaryNecBurn from "./ProposalSummaryNecBurn";
 
 interface IExternalProps {
   beneficiaryProfile?: IProfileState;
@@ -51,6 +52,8 @@ export default class ProposalSummary extends React.Component<IProps> {
       return <ProposalSummaryCO2ken {...this.props} />;
     } else if (genericSchemeInfo.specs.name === "Uniswap") {
       return <ProposalSummaryUniswap {...this.props} />;
+    } else if (genericSchemeInfo.specs.name === "necBurn") {
+      return <ProposalSummaryNecBurn {...this.props} />;
     }
     const proposalSummaryClass = classNames({
       [css.detailView]: detailView,

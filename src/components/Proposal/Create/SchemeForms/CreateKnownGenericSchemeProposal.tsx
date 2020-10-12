@@ -119,6 +119,20 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     return ethToSend;
   }
 
+  private getNecBurnEth(values: IFormValues): any {
+    const arc = getArc();
+    const web3 = arc.web3;
+
+    return web3.utils.toBN(web3.utils.toWei(values["_amount"].toString()));
+  }
+
+  private isNecBurnField = (field: ActionField, action: string, name: string): boolean => {
+    if (this.props.genericSchemeInfo.specs.name === "necBurn" && this.state.currentAction.id === action && field.name === name ) {
+      return true;
+    }
+    return false;
+  }
+
   private uniswapNetwork = () => {
     switch (targetedNetwork()) {
       case "rinkeby":
@@ -294,6 +308,8 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
       } else if (this.isUniswapField(field, "unpool", "_amount2")) {
         const callValue = field.callValue(this.computeMinimumUniswapUnpoolReturn(this.state.liquidityReturn2, values["_amount"], values["_amount1"]));
         callValues.push(callValue);
+      } else if (this.isNecBurnField(field, "fund", "_amount")) {
+        // do nothing
       }
       else {
         const callValue = field.callValue(values[field.name]);
@@ -317,6 +333,10 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     if (this.props.genericSchemeInfo.specs.name === "Standard Bounties") {
       const calcBountEth = await this.getBountyEth(values);
       ethValue = ethValue.add(calcBountEth);
+    }
+
+    if (this.props.genericSchemeInfo.specs.name === "necBurn") {
+      ethValue = ethValue.add(this.getNecBurnEth(values));
     }
 
     const proposalValues = {
@@ -379,6 +399,24 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
           </label>
         </div>;
       default:
+        if (this.isNecBurnField(field, "fund", "_amount")) {
+          return (
+            <Field id={field.name} name={field.name}>
+              {({ field }: any ) => (
+                <input
+                  {...field}
+                  id={field.name}
+                  data-test-id={field.name}
+                  name={field.name}
+                  type="number"
+                  placeholder={field.placeholder}
+                  className={touched[field.name] && errors[field.name] ? css.error : null}
+                >
+                </input>
+              )}
+            </Field>
+          );
+        }
         if (this.isUniswapField(field, "swap", "_from")) {
           return this.uniswapTokensField("_from", touched, errors, "swap");
         }
@@ -808,9 +846,15 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   }
                 }
 
-                if (field.type === "uint256" && !(this.isUniswapField(field, "swap", "_amount") || this.isUniswapField(field, "swap", "_expected") || this.isUniswapField(field, "pool", "_amount1") || this.isUniswapField(field, "pool", "_slippage"))) {
+                if (field.type === "uint256" && !(this.isNecBurnField(field, "fund", "_amount") || this.isUniswapField(field, "swap", "_amount") || this.isUniswapField(field, "swap", "_expected") || this.isUniswapField(field, "pool", "_amount1") || this.isUniswapField(field, "pool", "_slippage"))) {
                   if (/^\d+$/.test(value) === false) {
                     errors[field.name] = "Must contain only digits";
+                  }
+                }
+
+                if (this.isNecBurnField(field, "fund", "_amount")) {
+                  if (value <= 0) {
+                    errors[field.name] = "Must contain a positive value";
                   }
                 }
 

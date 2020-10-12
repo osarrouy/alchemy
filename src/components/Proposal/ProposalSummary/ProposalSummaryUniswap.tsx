@@ -26,7 +26,7 @@ const toUniswapToken = (address: string) => {
   return tokens[address.toLowerCase()] || NA;
 };
 
-export default class ProposalSummaryNecDAOUniswap extends React.Component<IProps, null> {
+export default class ProposalSummaryUniswap extends React.Component<IProps, null> {
 
   public render(): RenderOutput {
     const { proposal, detailView, genericSchemeInfo, transactionModal } = this.props;

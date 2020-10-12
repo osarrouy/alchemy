@@ -1,0 +1,37 @@
+{
+  "name": "necBurn",
+  "addresses": {
+    "main": [
+      ""
+    ],
+    "rinkeby": [
+      "0x1A6b2E372462C88afF55FEb76F09563671D4971b"
+    ],
+    "private": [
+      ""
+    ]
+  },
+  "actions": [
+    {
+      "id": "fund",
+      "label": "Fund",
+      "description": "Send ETH to fund necBurn auction process",
+      "fields": [
+        {
+          "label": "Amount to fund in ETH",
+          "name": "_amount",
+          "defaultValue": 0
+        }
+      ],
+      "abi": {
+        "constant": false,
+        "inputs": [],
+        "name": "payFeesInEther",
+        "outputs": [],
+        "payable": true,
+        "stateMutability": "payable",
+        "type": "function"
+      }
+    }
+  ]
+}
