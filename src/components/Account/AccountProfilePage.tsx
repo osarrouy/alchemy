@@ -12,7 +12,7 @@ import ThreeboxModal from "components/Shared/ThreeboxModal";
 import withSubscription, { ISubscriptionProps } from "components/Shared/withSubscription";
 import { Field, Formik, FormikProps } from "formik";
 import Analytics from "lib/analytics";
-import { baseTokenName, ethErrorHandler, genName, formatTokens } from "lib/util";
+import { baseTokenName, ethErrorHandler, genName, formatTokens, ethBalance, standardPolling } from "lib/util";
 import CopyToClipboard, { IconColor } from "components/Shared/CopyToClipboard";
 import { Page } from "pages";
 import { parse } from "query-string";
@@ -284,7 +284,7 @@ class AccountProfilePage extends React.Component<IProps, IState> {
                     }
                     <div className={css.otherInfoContainer}>
                       <div className={css.tokens}>
-                        {accountInfo
+                        {(accountInfo && dao)
                           ? <div><strong>Rep. Score</strong><br /><Reputation reputation={accountInfo.reputation} totalReputation={dao.reputationTotalSupply} daoName={dao.name} /> </div>
                           : ""}
                         <div><strong>{genName()}:</strong><br /><span>{formatTokens(genBalance)}</span></div>
@@ -329,9 +329,9 @@ const SubscribedAccountProfilePage = withSubscription({
 
     return combineLatest(
       // subscribe if only to to get DAO reputation supply updates
-      daoAvatarAddress ? dao.state( {subscribe: true}) : of(null),
+      daoAvatarAddress ? dao.state( standardPolling()) : of(null),
       daoAvatarAddress ? dao.member(accountAddress).state() : of(null),
-      arc.ethBalance(accountAddress)
+      ethBalance(accountAddress)
         .pipe(ethErrorHandler()),
       arc.GENToken().balanceOf(accountAddress)
         .pipe(ethErrorHandler())

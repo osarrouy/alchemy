@@ -1,6 +1,6 @@
 import { Address, IDAOState, IMemberState, IProposalState, IRewardState, Reward, Stake, Vote } from "@daostack/arc.js";
 import { getArc } from "arc";
-import { ethErrorHandler } from "lib/util";
+import { ethErrorHandler, ethBalance, standardPolling } from "lib/util";
 
 import BN = require("bn.js");
 import withSubscription, { ISubscriptionProps } from "components/Shared/withSubscription";
@@ -20,10 +20,6 @@ interface IExternalProps {
   daoState: IDAOState;
   proposalId: string;
   children(props: IInjectedProposalProps): JSX.Element;
-  /**
-   * true to subscribe to changes in votes, stakes and rewards
-   */
-  subscribeToProposalDetails?: boolean;
 }
 
 interface IStateProps {
@@ -129,10 +125,10 @@ export default withSubscription({
 
     if (currentAccountAddress) {
       return combineLatest(
-        proposal.state({ subscribe: props.subscribeToProposalDetails }), // state of the current proposal
-        proposal.votes({where: { voter: currentAccountAddress }}, { subscribe: props.subscribeToProposalDetails }),
-        proposal.stakes({where: { staker: currentAccountAddress }}, { subscribe: props.subscribeToProposalDetails }),
-        proposal.rewards({ where: {beneficiary: currentAccountAddress}}, { subscribe: props.subscribeToProposalDetails })
+        proposal.state(standardPolling()), // state of the current proposal
+        proposal.votes({where: { voter: currentAccountAddress }}, standardPolling()),
+        proposal.stakes({where: { staker: currentAccountAddress }}, standardPolling()),
+        proposal.rewards({ where: {beneficiary: currentAccountAddress}}, standardPolling())
           .pipe(map((rewards: Reward[]): Reward => rewards.length === 1 && rewards[0] || null))
           .pipe(mergeMap(((reward: Reward): Observable<IRewardState> => reward ? reward.state() : of(null)))),
 
@@ -142,7 +138,7 @@ export default withSubscription({
         // TODO: also need the member state for the proposal proposer and beneficiary
         //      but since we need the proposal state first to get those addresses we will need to
         //      update the arc.js query to load them inline
-        concat(of(new BN("0")), arcDao.ethBalance())
+        concat(of(new BN("0")), ethBalance(daoState.address))
           .pipe(ethErrorHandler()),
         arc.GENToken().balanceOf(currentAccountAddress)
           .pipe(ethErrorHandler()),
@@ -156,7 +152,7 @@ export default withSubscription({
         of([]), // stakes
         of(null), // rewards
         of(null), // current account member state
-        concat(of(new BN(0)), arcDao.ethBalance()) // dao eth balance
+        concat(of(new BN(0)), ethBalance(daoState.address)) // dao eth balance
           .pipe(ethErrorHandler()),
         of(new BN(0)), // current account gen balance
         of(null), // current account GEN allowance

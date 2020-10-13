@@ -24,6 +24,8 @@ import { Address, IDAOState } from "@daostack/arc.js";
 import { ETHDENVER_OPTIMIZATION } from "../settings";
 import * as css from "./App.scss";
 import ProviderConfigButton from "layouts/ProviderConfigButton";
+import Tooltip from "rc-tooltip";
+import { standardPolling } from "lib/util";
 
 interface IExternalProps extends RouteComponentProps<any> {
 }
@@ -100,12 +102,16 @@ class Header extends React.Component<IProps, null> {
   private toggleDiv: RefObject<HTMLDivElement>;
 
   public componentDidMount() {
-    this.toggleDiv.current.onmouseenter = (_ev: MouseEvent) => {
-      this.props.enableTrainingTooltipsShowAll();
-    };
-    this.toggleDiv.current.onmouseleave = (_ev: MouseEvent) => {
-      this.props.disableTrainingTooltipsShowAll();
-    };
+    if (this.toggleDiv.current) {
+      this.toggleDiv.current.onmouseenter = (_ev: MouseEvent) => {
+        this.props.enableTrainingTooltipsShowAll();
+      };
+      this.toggleDiv.current.onmouseleave = (_ev: MouseEvent) => {
+        this.props.disableTrainingTooltipsShowAll();
+      };
+    }
+
+    this.setState({ alchemyVersion: PACKAGE_VERSION ?? "Not found" });
   }
 
   public handleClickLogin = async (_event: any): Promise<void> => {
@@ -176,16 +182,16 @@ class Header extends React.Component<IProps, null> {
         <nav className={css.header}>
           <div className={css.menuToggle} onClick={this.handleToggleMenu}>
             {this.props.menuOpen ?
-              <img src="/assets/images/Icon/Close.svg"/> :
-              <img src="/assets/images/Icon/Menu.svg"/>}
+              <img src="/assets/images/Icon/Close.svg" /> :
+              <img src="/assets/images/Icon/Menu.svg" />}
           </div>
-          <TrainingTooltip overlay="View your personal feed" placement="bottomRight">
+          <Tooltip overlay={`DAOstack Alchemy version: ${PACKAGE_VERSION ?? "Not found"}`} placement="bottomRight">
             <div className={css.menu}>
               <Link to="/">
-                <img src="/assets/images/alchemy-logo-white.svg"/>
+                <img src="/assets/images/alchemy-logo-white.svg" />
               </Link>
             </div>
-          </TrainingTooltip>
+          </Tooltip>
           <div className={css.topInfo}>
             <Breadcrumbs
               separator={<b> &gt;   </b>}
@@ -199,7 +205,7 @@ class Header extends React.Component<IProps, null> {
               <Toggle
                 defaultChecked={trainingTooltipsOn}
                 onChange={this.handleTrainingTooltipsEnabled}
-                icons={{ checked: <img src='/assets/images/Icon/checked.svg'/>, unchecked: <img src='/assets/images/Icon/unchecked.svg'/> }}/>
+                icons={{ checked: <img src='/assets/images/Icon/checked.svg' />, unchecked: <img src='/assets/images/Icon/unchecked.svg' /> }} />
             </div>
           </TrainingTooltip>
           {
@@ -208,7 +214,7 @@ class Header extends React.Component<IProps, null> {
             </div> : ""
           }
           <div className={css.accountInfo}>
-            { currentAccountAddress ?
+            {currentAccountAddress ?
               <span>
                 <div className={css.accountInfoContainer}>
                   <div className={css.accountImage}>
@@ -237,25 +243,25 @@ class Header extends React.Component<IProps, null> {
                     </div>
                     <div className={css.fullProfile}>
                       <Link className={css.profileLink} to={"/profile/" + currentAccountAddress + (daoAvatarAddress ? "?daoAvatarAddress=" + daoAvatarAddress : "")}>
-                      Full Profile
+                        Full Profile
                       </Link>
                     </div>
                   </div>
                   <AccountBalances dao={dao} address={currentAccountAddress} />
                   <div className={css.logoutButtonContainer}>
-                    { accountIsEnabled ?
+                    {accountIsEnabled ?
                       <div className={css.web3ProviderLogoutSection}>
                         <div className={css.provider}>
                           <div className={css.title}>Provider</div>
                           <div className={css.name}>{web3ProviderInfo.name}</div>
                         </div>
-                        { providerHasConfigUi(web3Provider) ?
+                        {providerHasConfigUi(web3Provider) ?
                           <div className={css.providerconfig}><ProviderConfigButton provider={web3Provider} providerName={web3ProviderInfo.name}></ProviderConfigButton></div>
                           : ""
                         }
-                        <div className={css.web3ProviderLogInOut} onClick={this.handleClickLogout}><div className={css.text}>Log out</div> <img src="/assets/images/Icon/logout.svg"/></div>
+                        <div className={css.web3ProviderLogInOut} onClick={this.handleClickLogout}><div className={css.text}>Log out</div> <img src="/assets/images/Icon/logout.svg" /></div>
                       </div> :
-                      <div className={css.web3ProviderLogInOut} onClick={this.handleConnect}><div className={css.text}>Connect</div> <img src="/assets/images/Icon/login.svg"/></div> }
+                      <div className={css.web3ProviderLogInOut} onClick={this.handleConnect}><div className={css.text}>Connect</div> <img src="/assets/images/Icon/login.svg" /></div>}
                   </div>
                 </div>
               </span> : <span></span>
@@ -264,7 +270,7 @@ class Header extends React.Component<IProps, null> {
               <div className={css.web3ProviderLogin}>
                 <TrainingTooltip placement="bottomLeft" overlay={"Click here to connect your wallet provider"}>
                   <button onClick={this.handleClickLogin} data-test-id="loginButton">
-                    Log in <img src="/assets/images/Icon/login-white.svg"/>
+                    Log in <img src="/assets/images/Icon/login-white.svg" />
                   </button>
                 </TrainingTooltip>
               </div>
@@ -272,7 +278,7 @@ class Header extends React.Component<IProps, null> {
                 <div className={css.web3ProviderLogin}>
                   <TrainingTooltip placement="bottomLeft" overlay={"Click here to connect your wallet provider"}>
                     <button onClick={this.handleConnect} data-test-id="connectButton">
-                      <span className={css.connectButtonText}>Connect</span><img src="/assets/images/Icon/login-white.svg"/>
+                      <span className={css.connectButtonText}>Connect</span><img src="/assets/images/Icon/login-white.svg" />
                     </button>
                   </TrainingTooltip>
                 </div>
@@ -294,7 +300,7 @@ const SubscribedHeader = withSubscription({
     if (props.daoAvatarAddress) {
       const arc = getArc();
       // subscribe if only to get DAO reputation supply updates
-      return arc.dao(props.daoAvatarAddress).state({ subscribe: true });
+      return arc.dao(props.daoAvatarAddress).state(standardPolling());
     } else {
       return of(null);
     }
