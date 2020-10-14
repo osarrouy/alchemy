@@ -4,7 +4,6 @@ import * as React from "react";
 import { connect } from "react-redux";
 import { IProposalType, ISchemeState } from "@daostack/arc.js";
 import { enableWalletProvider, getArc } from "arc";
-import { ethers } from "ethers";
 
 import { ErrorMessage, Field, FieldArray, Form, Formik, FormikErrors, FormikProps, FormikTouched } from "formik";
 import * as classNames from "classnames";
@@ -17,7 +16,8 @@ import { NotificationStatus, showNotification } from "reducers/notifications";
 import * as arcActions from "actions/arcActions";
 
 import Analytics from "lib/analytics";
-import { formatTokens, isValidUrl, targetedNetwork, toBaseUnit } from "lib/util";
+import { formatTokens, isValidUrl } from "lib/util";
+import uniswap from "lib/uniswap";
 import { exportUrl, importUrlValues } from "lib/proposalUtils";
 
 import TagsSelector from "components/Proposal/Create/SchemeForms/TagsSelector";
@@ -26,13 +26,8 @@ import * as css from "../CreateProposal.scss";
 import MarkdownField from "./MarkdownField";
 import HelpButton from "components/Shared/HelpButton";
 
-import { ChainId, Token, WETH, Fetcher, Route, Trade, TokenAmount, TradeType } from "@uniswap/sdk";
-
 const BN = require("bn.js");
 const BigNum = require("bignumber.js");
-const TOKENS = require("../../../../../data/tokens.json");
-const ERC20 = require("../../../../../data/ERC20.json");
-const PCT_BASE = new BigNum("10000");
 
 interface IExternalProps {
   daoAvatarAddress: string;
@@ -133,36 +128,6 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     return false;
   }
 
-  private uniswapNetwork = () => {
-    switch (targetedNetwork()) {
-      case "rinkeby":
-        return ChainId.RINKEBY;
-      default:
-        return ChainId.MAINNET;
-    }
-  }
-
-  private uniswapTokens = () => {
-    return { "0x0000000000000000000000000000000000000000": { symbol: "ETH", decimals: 18 }, ...TOKENS[targetedNetwork()].tokens};
-  }
-
-  private toUniswapToken = (address: string) => {
-    const NA = { symbol: "N/A", decimals: 18 };
-
-    return this.uniswapTokens()[address.toLowerCase()] || NA;
-  };
-
-  private toUniswapBaseUnit = (token: string, amount: string): string => {
-    return toBaseUnit(amount.toString(), this.toUniswapToken(token).decimals).toString();
-  }
-
-  private isUniswapField = (field: ActionField, action: string, name: string): boolean => {
-    if (this.props.genericSchemeInfo.specs.name === "Uniswap" && this.state.currentAction.id === action && field.name === name ) {
-      return true;
-    }
-    return false;
-  }
-
   private uniswapTokensField = (name: string, touched: FormikTouched<IFormValues>, errors: FormikErrors<IFormValues>, action: string) => {
     return (
       <Field id={name} name={name}>
@@ -172,11 +137,11 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
               form.handleChange(e);
               const values = form.values;
               values[e.target.id] = (document.getElementById(e.target.id) as HTMLInputElement).value;
-              this.fetchUniswapPrice(action, values);
+              uniswap.fetchData(this, action, values);
             }}>
               <option value="" disabled selected>Choose ETH or an ERC20 token</option>
               {
-                Object.entries(this.uniswapTokens()).map(token => {
+                Object.entries(uniswap.tokens()).map(token => {
                   return (<option key={token[0] as string} value={token[0] as string}>{(token[1] as IToken).symbol}</option>);
                 })
               }
@@ -187,95 +152,6 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     );
   }
 
-  private fetchUniswapPrice = async (action: string, values: any): Promise<any> => {
-    try {
-      const arc = getArc();
-      const provider = new ethers.providers.Web3Provider(arc.web3.currentProvider);
-      const network = this.uniswapNetwork();
-
-      if (action === "pool" && values["_token1"] !== "" && values["_token2"] !== "") {
-        const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;
-        const _token2 = values["_token2"] !== "0x0000000000000000000000000000000000000000" ? values["_token2"] : WETH[network].address;
-
-        const token1 = new Token(network, _token1, this.toUniswapToken(_token1).decimals);
-        const token2 = new Token(network, _token2, this.toUniswapToken(_token2).decimals);
-
-        const pair = await Fetcher.fetchPairData(token1, token2, provider);
-        const route = new Route([pair], token1);
-
-        this.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
-      } else if (action === "swap" && values["_from"] !== "" && values["_to"] !== "") {
-        const from = values["_from"] !== "0x0000000000000000000000000000000000000000" ? values["_from"] : WETH[network].address;
-        const to = values["_to"] !== "0x0000000000000000000000000000000000000000" ? values["_to"] : WETH[network].address;
-
-        const token1 = new Token(network, from, this.toUniswapToken(from).decimals);
-        const token2 = new Token(network, to, this.toUniswapToken(to).decimals);
-
-        const pair = await Fetcher.fetchPairData(token1, token2, provider);
-        const route = new Route([pair], token1);
-        const trade = new Trade(route, new TokenAmount(token1, this.toUniswapBaseUnit(token1.address, values["_amount"])), TradeType.EXACT_INPUT);
-
-        this.setState({executionPrice: trade.executionPrice.toSignificant(6)});
-      } else if (action === "unpool" && values["_token1"] !== "" && values["_token2"] !== "") {
-        try {
-          const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;
-          const _token2 = values["_token2"] !== "0x0000000000000000000000000000000000000000" ? values["_token2"] : WETH[network].address;
-
-          const token1 = new Token(network, _token1, this.toUniswapToken(_token1).decimals);
-          const token2 = new Token(network, _token2, this.toUniswapToken(_token2).decimals);
-
-          const pair = await Fetcher.fetchPairData(token1, token2, provider);
-          const liquidity = new arc.web3.eth.Contract(ERC20, pair.liquidityToken.address);
-          const totalSupply = await liquidity.methods.totalSupply().call();
-          const balance = await liquidity.methods.balanceOf(this.props.daoAvatarAddress).call();
-
-          const liquidityReturn1 = await pair.getLiquidityValue(token1, new TokenAmount(pair.liquidityToken, totalSupply), new TokenAmount(pair.liquidityToken, balance));
-          const liquidityReturn2 = await pair.getLiquidityValue(token2, new TokenAmount(pair.liquidityToken, totalSupply), new TokenAmount(pair.liquidityToken, balance));
-
-          this.setState({ liquidity: balance, liquidityReturn1: liquidityReturn1.raw.toString(), liquidityReturn2: liquidityReturn2.raw.toString() });
-        }
-        catch (e) {
-          console.warn("Failed to fetch Uniswap data: " + e);
-          this.setState({ liquidity: "0", liquidityReturn1: "0", liquidityReturn2: "0" });
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch Uniswap data: " + e);
-    }
-  }
-
-  private computeExpectedUniswapSwapReturn = (from: string, to: string, amount: string) => {
-    const _amount = new BigNum(this.toUniswapBaseUnit(from, amount));
-    const _return = _amount.times(new BigNum(this.state.executionPrice));
-    const _base = (new BigNum(10)).pow(new BigNum(this.toUniswapToken(to).decimals));
-    return _return.div(_base).toFixed(0);
-  }
-
-  private computeMinimumUniswapSwapReturn = (from: string, to: string, amount: string, slippage: string) => {
-    const _amount = new BigNum(this.toUniswapBaseUnit(from, amount));
-    const _return = _amount.times(new BigNum(this.state.executionPrice));
-    const _pct = (new BigNum(1)).minus((new BigNum(slippage)).dividedBy(new BigNum(100)));
-    const _min = _return.times(_pct);
-    const _base = (new BigNum(10)).pow(new BigNum(this.toUniswapToken(to).decimals));
-    return _min.div(_base).toFixed(0);
-  }
-
-  private computeMinimumUniswapUnpoolReturn = (max: string, percentage: string, slippage: string) => {
-    const _hundred = new BigNum("100");
-    const _slippage = new BigNum(slippage);
-    const _expected = new BigNum(this.computePercentage(max, percentage));
-
-    return _expected.times(_hundred.minus(_slippage)).div(_hundred).toFixed(0);
-
-  }
-
-  private computePercentage = (value: string, percentage: string) => {
-    const _percentage = new BigNum(percentage);
-    const _hundred = new BigNum("100");
-    const _liquidity = new BigNum(value);
-    return _percentage.times(_liquidity).div(_hundred).toFixed(0);
-  }
-
   private handleSubmit = async (values: IFormValues, { setSubmitting }: any ): Promise<void> => {
     if (!await enableWalletProvider({ showNotification: this.props.showNotification })) { return; }
 
@@ -283,30 +159,30 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
     const callValues = [];
 
     for (const field of currentAction.getFields()) {
-      if (this.isUniswapField(field, "swap", "_amount")) {
-        const callValue = field.callValue(this.toUniswapBaseUnit(values["_from"], values["_amount"]));
+      if (uniswap.isField(this, field, "swap", "_amount")) {
+        const callValue = field.callValue(uniswap.toBaseUnit(values["_from"], values["_amount"]));
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "swap", "_expected")) {
-        const callValue = field.callValue(this.toUniswapBaseUnit(values["_to"], this.computeMinimumUniswapSwapReturn(values["_from"], values["_to"], values["_amount"], values["_expected"])));
+      } else if (uniswap.isField(this, field, "swap", "_expected")) {
+        const callValue = field.callValue(uniswap.toBaseUnit(values["_to"], uniswap.computeMinimumSwapReturn(this, values["_from"], values["_to"], values["_amount"], values["_expected"])));
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "pool", "_amount1")) {
-        const callValue = field.callValue(this.toUniswapBaseUnit(values["_token1"], values["_amount1"]));
+      } else if (uniswap.isField(this, field, "pool", "_amount1")) {
+        const callValue = field.callValue(uniswap.toBaseUnit(values["_token1"], values["_amount1"]));
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "pool", "_amount2")) {
+      } else if (uniswap.isField(this, field, "pool", "_amount2")) {
         const amount = ((new BigNum(values["_amount1"])).times(new BigNum(this.state.price))).toString();
-        const callValue = field.callValue(this.toUniswapBaseUnit(values["_token2"], amount));
+        const callValue = field.callValue(uniswap.toBaseUnit(values["_token2"], amount));
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "pool", "_slippage")) {
-        const callValue = field.callValue((new BigNum(values["_slippage"])).times(PCT_BASE).toString());
+      } else if (uniswap.isField(this, field, "pool", "_slippage")) {
+        const callValue = field.callValue((new BigNum(values["_slippage"])).times(new BigNum("10000")).toString());
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "unpool", "_amount")) {
-        const callValue = field.callValue(this.computePercentage(this.state.liquidity, values["_amount"]));
+      } else if (uniswap.isField(this, field, "unpool", "_amount")) {
+        const callValue = field.callValue(uniswap.computePercentage(this.state.liquidity, values["_amount"]));
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "unpool", "_amount1")) {
-        const callValue = field.callValue(this.computeMinimumUniswapUnpoolReturn(this.state.liquidityReturn1, values["_amount"], values["_amount1"]));
+      } else if (uniswap.isField(this, field, "unpool", "_amount1")) {
+        const callValue = field.callValue(uniswap.computeMinimumUnpoolReturn(this.state.liquidityReturn1, values["_amount"], values["_amount1"]));
         callValues.push(callValue);
-      } else if (this.isUniswapField(field, "unpool", "_amount2")) {
-        const callValue = field.callValue(this.computeMinimumUniswapUnpoolReturn(this.state.liquidityReturn2, values["_amount"], values["_amount1"]));
+      } else if (uniswap.isField(this, field, "unpool", "_amount2")) {
+        const callValue = field.callValue(uniswap.computeMinimumUnpoolReturn(this.state.liquidityReturn2, values["_amount"], values["_amount1"]));
         callValues.push(callValue);
       } else if (this.isNecBurnField(field, "fund", "_amount")) {
         // do nothing
@@ -417,13 +293,13 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
             </Field>
           );
         }
-        if (this.isUniswapField(field, "swap", "_from")) {
+        if (uniswap.isField(this, field, "swap", "_from")) {
           return this.uniswapTokensField("_from", touched, errors, "swap");
         }
-        if (this.isUniswapField(field, "swap", "_to")) {
+        if (uniswap.isField(this, field, "swap", "_to")) {
           return this.uniswapTokensField("_to", touched, errors, "swap");
         }
-        if (this.isUniswapField(field, "swap", "_amount")) {
+        if (uniswap.isField(this, field, "swap", "_amount")) {
           return (
             <Field id={field.name} name={field.name}>
               {({ field, form }: any ) => (
@@ -439,14 +315,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                     form.handleChange(e);
                     const values = form.values;
                     values["_amount"] = e.target.value;
-                    this.fetchUniswapPrice("swap", values);
+                    uniswap.fetchData(this, "swap", values);
                   }}>
                 </input>
               )}
             </Field>
           );
         }
-        if (this.isUniswapField(field, "swap", "_expected")) {
+        if (uniswap.isField(this, field, "swap", "_expected")) {
           return (
             <div>
               <Field
@@ -461,15 +337,15 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                 <div className={css.uniswapInformations}>
                   <b>Price</b>
                   <pre>
-                    {this.state.executionPrice} {this.toUniswapToken(values["_to"]).symbol} / {this.toUniswapToken(values["_from"]).symbol}
+                    {this.state.executionPrice} {uniswap.toToken(values["_to"]).symbol} / {uniswap.toToken(values["_from"]).symbol}
                   </pre>
                   <b>Expected return</b>
                   <pre>
-                    {this.computeExpectedUniswapSwapReturn(values["_from"], values["_to"], values["_amount"])} {this.toUniswapToken(values["_to"]).symbol}
+                    {uniswap.computeExpectedSwapReturn(this, values["_from"], values["_to"], values["_amount"])} {uniswap.toToken(values["_to"]).symbol}
                   </pre>
                   <b>Minimum return (reverts otherwise)</b>
                   <pre>
-                    {this.computeMinimumUniswapSwapReturn(values["_from"], values["_to"], values["_amount"], values["_expected"])} {this.toUniswapToken(values["_to"]).symbol}
+                    {uniswap.computeMinimumSwapReturn(this, values["_from"], values["_to"], values["_amount"], values["_expected"])} {uniswap.toToken(values["_to"]).symbol}
                   </pre>
                 </div>
               }
@@ -492,13 +368,13 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
             </div>
           );
         }
-        if (this.isUniswapField(field, "pool", "_token1")) {
+        if (uniswap.isField(this, field, "pool", "_token1")) {
           return this.uniswapTokensField("_token1", touched, errors, "pool");
         }
-        if (this.isUniswapField(field, "pool", "_token2")) {
+        if (uniswap.isField(this, field, "pool", "_token2")) {
           return this.uniswapTokensField("_token2", touched, errors, "pool");
         }
-        if (this.isUniswapField(field, "pool", "_amount1")) {
+        if (uniswap.isField(this, field, "pool", "_amount1")) {
           return (
             <Field id={field.name} name={field.name}>
               {({ field, form }: any ) => (
@@ -514,14 +390,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                     form.handleChange(e);
                     const values = form.values;
                     values["_amount1"] = e.target.value;
-                    this.fetchUniswapPrice("pool", values);
+                    uniswap.fetchData(this, "pool", values);
                   }}>
                 </input>
               )}
             </Field>
           );
         }
-        if (this.isUniswapField(field, "pool", "_amount2")) {
+        if (uniswap.isField(this, field, "pool", "_amount2")) {
           return <Field
             id={field.name}
             data-test-id={field.name}
@@ -531,8 +407,8 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
             className={css.hidden}
           />;
         }
-        if (this.isUniswapField(field, "pool", "_slippage")) {
-          const tokens = this.uniswapTokens();
+        if (uniswap.isField(this, field, "pool", "_slippage")) {
+          const tokens = uniswap.tokens();
           return (
             <div>
               <Field
@@ -576,14 +452,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
             </div>
           );
         }
-        if (this.isUniswapField(field, "unpool", "_token1")) {
+        if (uniswap.isField(this, field, "unpool", "_token1")) {
           return this.uniswapTokensField("_token1", touched, errors, "unpool");
         }
-        if (this.isUniswapField(field, "unpool", "_token2")) {
+        if (uniswap.isField(this, field, "unpool", "_token2")) {
           return this.uniswapTokensField("_token2", touched, errors, "unpool");
         }
-        if (this.isUniswapField(field, "unpool", "_amount1")) {
-          const tokens = this.uniswapTokens();
+        if (uniswap.isField(this, field, "unpool", "_amount1")) {
+          const tokens = uniswap.tokens();
           return (
             <div>
               <Field id={field.name} name={field.name}>
@@ -600,7 +476,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                       form.handleChange(e);
                       const values = form.values;
                       values["_amount1"] = e.target.value;
-                      this.fetchUniswapPrice("unpool", values);
+                      uniswap.fetchData(this, "unpool", values);
                     }}>
                   </input>
                 )}
@@ -609,14 +485,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                 <div className={css.uniswapInformations}>
                   <b>Unpool</b>
                   <pre>
-                    {formatTokens(new BN(this.computePercentage(this.state.liquidity, values["_amount"])), tokens[values["_token1"]].symbol + " / " + tokens[values["_token2"]].symbol)} liquidity tokens
+                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidity, values["_amount"])), tokens[values["_token1"]].symbol + " / " + tokens[values["_token2"]].symbol)} liquidity tokens
                   </pre>
                   <b>Expected returns</b>
                   <pre>
-                    {formatTokens(new BN(this.computePercentage(this.state.liquidityReturn1, values["_amount"])), tokens[values["_token1"]].symbol, tokens[values["_token1"]].decimals)}
+                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidityReturn1, values["_amount"])), tokens[values["_token1"]].symbol, tokens[values["_token1"]].decimals)}
                   </pre>
                   <pre>
-                    {formatTokens(new BN(this.computePercentage(this.state.liquidityReturn2, values["_amount"])), tokens[values["_token2"]].symbol, tokens[values["_token2"]].decimals)}
+                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidityReturn2, values["_amount"])), tokens[values["_token2"]].symbol, tokens[values["_token2"]].decimals)}
                   </pre>
                 </div>
               }
@@ -649,7 +525,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
             </div>
           );
         }
-        if (this.isUniswapField(field, "unpool", "_amount2")) {
+        if (uniswap.isField(this, field, "unpool", "_amount2")) {
           return <Field
             id={field.name}
             data-test-id={field.name}
@@ -847,7 +723,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   }
                 }
 
-                if (field.type === "uint256" && !(this.isNecBurnField(field, "fund", "_amount") || this.isUniswapField(field, "swap", "_amount") || this.isUniswapField(field, "swap", "_expected") || this.isUniswapField(field, "pool", "_amount1") || this.isUniswapField(field, "pool", "_slippage"))) {
+                if (field.type === "uint256" && !(this.isNecBurnField(field, "fund", "_amount") || uniswap.isField(this, field, "swap", "_amount") || uniswap.isField(this, field, "swap", "_expected") || uniswap.isField(this, field, "pool", "_amount1") || uniswap.isField(this, field, "pool", "_slippage"))) {
                   if (/^\d+$/.test(value) === false) {
                     errors[field.name] = "Must contain only digits";
                   }
@@ -859,19 +735,19 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   }
                 }
 
-                if (this.isUniswapField(field, "swap", "_amount") || this.isUniswapField(field, "pool", "_amount1")) {
+                if (uniswap.isField(this, field, "swap", "_amount") || uniswap.isField(this, field, "pool", "_amount1")) {
                   if (value <= 0) {
                     errors[field.name] = "Must contain a positive value";
                   }
                 }
 
-                if (this.isUniswapField(field, "unpool", "_amount")) {
+                if (uniswap.isField(this, field, "unpool", "_amount")) {
                   if (value <= 0 || value > 100) {
                     errors[field.name] = "Must contain a positive percentage";
                   }
                 }
 
-                if (this.isUniswapField(field, "swap", "_expected") || this.isUniswapField(field, "pool", "_slippage") || this.isUniswapField(field, "unpool", "_amount1")) {
+                if (uniswap.isField(this, field, "swap", "_expected") || uniswap.isField(this, field, "pool", "_slippage") || uniswap.isField(this, field, "unpool", "_amount1")) {
                   if (value < 0 || value > 100) {
                     errors[field.name] = "Must contain a valid percentage between 0 and 100";
                   }
@@ -957,7 +833,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   >
                     {
                       currentAction.getFields().map((field: ActionField) => {
-                        if (this.isUniswapField(field, "pool", "_amount2") || this.isUniswapField(field, "unpool", "_amount2")) {
+                        if (uniswap.isField(this, field, "pool", "_amount2") || uniswap.isField(this, field, "unpool", "_amount2")) {
                           return (
                             <div key={field.name}>
                               {this.renderField(field, values, touched, errors)}
