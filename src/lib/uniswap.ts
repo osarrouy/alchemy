@@ -18,7 +18,7 @@ const uniswap = {
     }
   },
   isField: (ctx: any, field: ActionField, action: string, name: string): boolean => {
-    if (ctx.props.genericSchemeInfo.specs.name === "Uniswap" && ctx.state.currentAction.id === action && field.name === name ) {
+    if (ctx.props.genericSchemeInfo.specs.name === "Uniswap" && ctx.state.currentAction.id === action && field.name === name) {
       return true;
     }
     return false;
@@ -35,24 +35,21 @@ const uniswap = {
     return toBaseUnit(amount.toString(), uniswap.toToken(token).decimals).toString();
   },
   computePercentage: (value: string, percentage: string) => {
+    const _value = new BigNum(value);
     const _percentage = new BigNum(percentage);
     const _hundred = new BigNum("100");
-    const _liquidity = new BigNum(value);
-    return _percentage.times(_liquidity).div(_hundred).toFixed(0);
+    return _percentage.times(_value).div(_hundred).toFixed(0);
   },
-  computeExpectedSwapReturn: (ctx: any, from: string, to: string, amount: string) => {
+  computeExpectedSwapReturn: (ctx: any, from: string, amount: string) => {
     const _amount = new BigNum(uniswap.toBaseUnit(from, amount));
-    const _return = _amount.times(new BigNum(ctx.state.executionPrice));
-    const _base = (new BigNum(10)).pow(new BigNum(uniswap.toToken(to).decimals));
-    return _return.div(_base).toFixed(0);
+    const _price = new BigNum(ctx.state.executionPrice);
+    const _return = _amount.times(_price);
+    return _return.toFixed(0);
   },
-  computeMinimumSwapReturn: (ctx: any, from: string, to: string, amount: string, slippage: string) => {
-    const _amount = new BigNum(uniswap.toBaseUnit(from, amount));
-    const _return = _amount.times(new BigNum(ctx.state.executionPrice));
-    const _pct = (new BigNum(1)).minus((new BigNum(slippage)).dividedBy(new BigNum(100)));
-    const _min = _return.times(_pct);
-    const _base = (new BigNum(10)).pow(new BigNum(uniswap.toToken(to).decimals));
-    return _min.div(_base).toFixed(0);
+  computeMinimumSwapReturn: (ctx: any, from: string, amount: string, slippage: string) => {
+    const _expected = new BigNum(uniswap.computeExpectedSwapReturn(ctx, from, amount));
+    const _slippage = uniswap.computePercentage(_expected.toString(), slippage);
+    return _expected.minus(_slippage).toFixed(0);
   },
   computeMinimumUnpoolReturn: (max: string, percentage: string, slippage: string) => {
     const _hundred = new BigNum("100");
@@ -67,28 +64,38 @@ const uniswap = {
       const network = uniswap.network();
 
       if (action === "pool" && values["_token1"] !== "" && values["_token2"] !== "") {
-        const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;
-        const _token2 = values["_token2"] !== "0x0000000000000000000000000000000000000000" ? values["_token2"] : WETH[network].address;
+        try {
+          const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;
+          const _token2 = values["_token2"] !== "0x0000000000000000000000000000000000000000" ? values["_token2"] : WETH[network].address;
 
-        const token1 = new Token(network, _token1, uniswap.toToken(_token1).decimals);
-        const token2 = new Token(network, _token2, uniswap.toToken(_token2).decimals);
+          const token1 = new Token(network, _token1, uniswap.toToken(_token1).decimals);
+          const token2 = new Token(network, _token2, uniswap.toToken(_token2).decimals);
 
-        const pair = await Fetcher.fetchPairData(token1, token2, provider);
-        const route = new Route([pair], token1);
+          const pair = await Fetcher.fetchPairData(token1, token2, provider);
+          const route = new Route([pair], token1);
 
-        ctx.setState({price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6)});
+          ctx.setState({ price: route.midPrice.toSignificant(6), invertedPrice: route.midPrice.invert().toSignificant(6) });
+        } catch (e) {
+          console.warn("Failed to fetch Uniswap data: " + e);
+          ctx.setState({ price: "0", invertedPrice: "0" });
+        }
       } else if (action === "swap" && values["_from"] !== "" && values["_to"] !== "") {
-        const from = values["_from"] !== "0x0000000000000000000000000000000000000000" ? values["_from"] : WETH[network].address;
-        const to = values["_to"] !== "0x0000000000000000000000000000000000000000" ? values["_to"] : WETH[network].address;
+        try {
+          const from = values["_from"] !== "0x0000000000000000000000000000000000000000" ? values["_from"] : WETH[network].address;
+          const to = values["_to"] !== "0x0000000000000000000000000000000000000000" ? values["_to"] : WETH[network].address;
 
-        const token1 = new Token(network, from, uniswap.toToken(from).decimals);
-        const token2 = new Token(network, to, uniswap.toToken(to).decimals);
+          const token1 = new Token(network, from, uniswap.toToken(from).decimals);
+          const token2 = new Token(network, to, uniswap.toToken(to).decimals);
 
-        const pair = await Fetcher.fetchPairData(token1, token2, provider);
-        const route = new Route([pair], token1);
-        const trade = new Trade(route, new TokenAmount(token1, uniswap.toBaseUnit(token1.address, values["_amount"])), TradeType.EXACT_INPUT);
+          const pair = await Fetcher.fetchPairData(token1, token2, provider);
+          const route = new Route([pair], token1);
+          const trade = new Trade(route, new TokenAmount(token1, uniswap.toBaseUnit(token1.address, values["_amount"])), TradeType.EXACT_INPUT);
 
-        ctx.setState({executionPrice: trade.executionPrice.toSignificant(6)});
+          ctx.setState({executionPrice: trade.executionPrice.toSignificant(6)});
+        } catch (e) {
+          console.warn("Failed to fetch Uniswap data: " + e);
+          ctx.setState({ executionPrice: "0" });
+        }
       } else if (action === "unpool" && values["_token1"] !== "" && values["_token2"] !== "") {
         try {
           const _token1 = values["_token1"] !== "0x0000000000000000000000000000000000000000" ? values["_token1"] : WETH[network].address;

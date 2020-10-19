@@ -15,8 +15,7 @@ const co2kenInfo = require("./schemes/CO2ken.json");
 const dXTokenRegistry = require("./schemes/dXTokenRegistry.json");
 const dXswapGovernance = require("./schemes/DXswapGovernance.json");
 const uniswap = require("./schemes/Uniswap.json");
-const necBurn = require("./schemes/necBurn.json");
-
+const necBurn = require("./schemes/NecBurn.json");
 
 const KNOWNSCHEMES = [
   dutchXInfo,
@@ -179,6 +178,7 @@ export class Action implements IActionSpec {
         ...this.fields[i],
       }));
     }
+    // add a fake field to necBurn fund action to enable users fill the amount of ETH they wanna send
     if (this.abi.name === "payFeesInEther") {
       result.push(new ActionField({
         name: "_amount",

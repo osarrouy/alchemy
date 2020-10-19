@@ -122,7 +122,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
   }
 
   private isNecBurnField = (field: ActionField, action: string, name: string): boolean => {
-    if (this.props.genericSchemeInfo.specs.name === "necBurn" && this.state.currentAction.id === action && field.name === name ) {
+    if (this.props.genericSchemeInfo.specs.name === "necBurn" && this.state.currentAction.id === action && field.name === name) {
       return true;
     }
     return false;
@@ -163,7 +163,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         const callValue = field.callValue(uniswap.toBaseUnit(values["_from"], values["_amount"]));
         callValues.push(callValue);
       } else if (uniswap.isField(this, field, "swap", "_expected")) {
-        const callValue = field.callValue(uniswap.toBaseUnit(values["_to"], uniswap.computeMinimumSwapReturn(this, values["_from"], values["_to"], values["_amount"], values["_expected"])));
+        const callValue = field.callValue(uniswap.computeMinimumSwapReturn(this, values["_from"], values["_amount"], values["_expected"]));
         callValues.push(callValue);
       } else if (uniswap.isField(this, field, "pool", "_amount1")) {
         const callValue = field.callValue(uniswap.toBaseUnit(values["_token1"], values["_amount1"]));
@@ -341,11 +341,11 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   </pre>
                   <b>Expected return</b>
                   <pre>
-                    {uniswap.computeExpectedSwapReturn(this, values["_from"], values["_to"], values["_amount"])} {uniswap.toToken(values["_to"]).symbol}
+                    {formatTokens(new BN(uniswap.computeExpectedSwapReturn(this, values["_from"], values["_amount"])), uniswap.toToken(values["_to"]).symbol, uniswap.toToken(values["_to"]).decimals)}
                   </pre>
                   <b>Minimum return (reverts otherwise)</b>
                   <pre>
-                    {uniswap.computeMinimumSwapReturn(this, values["_from"], values["_to"], values["_amount"], values["_expected"])} {uniswap.toToken(values["_to"]).symbol}
+                    {formatTokens(new BN(uniswap.computeMinimumSwapReturn(this, values["_from"], values["_amount"], values["_expected"])), uniswap.toToken(values["_to"]).symbol, uniswap.toToken(values["_to"]).decimals)}
                   </pre>
                 </div>
               }
@@ -723,19 +723,13 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                   }
                 }
 
-                if (field.type === "uint256" && !(this.isNecBurnField(field, "fund", "_amount") || uniswap.isField(this, field, "swap", "_amount") || uniswap.isField(this, field, "swap", "_expected") || uniswap.isField(this, field, "pool", "_amount1") || uniswap.isField(this, field, "pool", "_slippage"))) {
+                if (field.type === "uint256" && !(this.isNecBurnField(field, "fund", "_amount") || uniswap.isField(this, field, "swap", "_amount") || uniswap.isField(this, field, "swap", "_expected") || uniswap.isField(this, field, "pool", "_amount1") || uniswap.isField(this, field, "pool", "_slippage") || uniswap.isField(this, field, "unpool", "_amount") || uniswap.isField(this, field, "unpool", "_amount1"))) {
                   if (/^\d+$/.test(value) === false) {
                     errors[field.name] = "Must contain only digits";
                   }
                 }
 
-                if (this.isNecBurnField(field, "fund", "_amount")) {
-                  if (value <= 0) {
-                    errors[field.name] = "Must contain a positive value";
-                  }
-                }
-
-                if (uniswap.isField(this, field, "swap", "_amount") || uniswap.isField(this, field, "pool", "_amount1")) {
+                if (this.isNecBurnField(field, "fund", "_amount") || uniswap.isField(this, field, "swap", "_amount") || uniswap.isField(this, field, "pool", "_amount1")) {
                   if (value <= 0) {
                     errors[field.name] = "Must contain a positive value";
                   }
@@ -743,7 +737,7 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
 
                 if (uniswap.isField(this, field, "unpool", "_amount")) {
                   if (value <= 0 || value > 100) {
-                    errors[field.name] = "Must contain a positive percentage";
+                    errors[field.name] = "Must contain a positive percentage between 0 and 100";
                   }
                 }
 
