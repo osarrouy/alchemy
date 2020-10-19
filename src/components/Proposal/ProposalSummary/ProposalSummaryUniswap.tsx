@@ -151,6 +151,30 @@ export default class ProposalSummaryUniswap extends React.Component<IProps, null
           </div>
         );
       }
+      case "upgradeRouter": {
+        const router = decodedCallData.values[0];
+
+        return (
+          <div className={proposalSummaryClass}>
+            <span className={css.summaryTitle}>
+              Upgrade UniswapV2 router
+            </span>
+            { detailView ?
+              <div className={css.summaryDetails}>
+                <div>
+                  <p>
+                    Executing this proposal will upgrade the UniswapV2Router address to
+                  </p>
+                  <pre>
+                    {router}.
+                  </pre>
+                </div>
+              </div>
+              : ""
+            }
+          </div>
+        );
+      }
       default:
         return "";
     }
