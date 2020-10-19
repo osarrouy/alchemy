@@ -169,8 +169,10 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
         const callValue = field.callValue(uniswap.toBaseUnit(values["_token1"], values["_amount1"]));
         callValues.push(callValue);
       } else if (uniswap.isField(this, field, "pool", "_amount2")) {
-        const amount = ((new BigNum(values["_amount1"])).times(new BigNum(this.state.price))).toString();
-        const callValue = field.callValue(uniswap.toBaseUnit(values["_token2"], amount));
+        const _amount1 = new BigNum(uniswap.toBaseUnit(values["_token1"], values["_amount1"]));
+        const _price = new BigNum(Number(this.state.price));
+        const _amount2 = _amount1.times(_price);
+        const callValue = field.callValue(_amount2.toFixed(0));
         callValues.push(callValue);
       } else if (uniswap.isField(this, field, "pool", "_slippage")) {
         const callValue = field.callValue((new BigNum(values["_slippage"])).times(new BigNum("10000")).toString());
@@ -423,10 +425,10 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                 <div className={css.uniswapInformations}>
                   <b>Pool</b>
                   <pre>
-                    {values["_amount1"]} {tokens[values["_token1"]].symbol}
+                    {formatTokens(new BN(uniswap.toBaseUnit(values["_token1"], values["_amount1"])), uniswap.toToken(values["_token1"]).symbol, uniswap.toToken(values["_token1"]).decimals)}
                   </pre>
                   <pre>
-                    {values["_amount1"] * Number(this.state.price)} {tokens[values["_token2"]].symbol}
+                    {formatTokens(new BN(new BigNum(uniswap.toBaseUnit(values["_token1"], values["_amount1"])).times(new BigNum(Number(this.state.price))).toFixed(0)), uniswap.toToken(values["_token2"]).symbol, uniswap.toToken(values["_token2"]).decimals)}
                   </pre>
                   <b>Price</b>
                   <pre>
@@ -459,7 +461,6 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
           return this.uniswapTokensField("_token2", touched, errors, "unpool");
         }
         if (uniswap.isField(this, field, "unpool", "_amount1")) {
-          const tokens = uniswap.tokens();
           return (
             <div>
               <Field id={field.name} name={field.name}>
@@ -485,14 +486,14 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
                 <div className={css.uniswapInformations}>
                   <b>Unpool</b>
                   <pre>
-                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidity, values["_amount"])), tokens[values["_token1"]].symbol + " / " + tokens[values["_token2"]].symbol)} liquidity tokens
+                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidity, values["_amount"])), uniswap.toToken(values["_token1"]).symbol + " / " + uniswap.toToken(values["_token2"]).symbol)} liquidity tokens
                   </pre>
                   <b>Expected returns</b>
                   <pre>
-                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidityReturn1, values["_amount"])), tokens[values["_token1"]].symbol, tokens[values["_token1"]].decimals)}
+                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidityReturn1, values["_amount"])), uniswap.toToken(values["_token1"]).symbol, uniswap.toToken(values["_token1"]).decimals)}
                   </pre>
                   <pre>
-                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidityReturn2, values["_amount"])), tokens[values["_token2"]].symbol, tokens[values["_token2"]].decimals)}
+                    {formatTokens(new BN(uniswap.computePercentage(this.state.liquidityReturn2, values["_amount"])), uniswap.toToken(values["_token2"]).symbol, uniswap.toToken(values["_token2"]).decimals)}
                   </pre>
                 </div>
               }
@@ -511,9 +512,9 @@ class CreateKnownSchemeProposal extends React.Component<IProps, IState> {
               {values["_token1"] !== "" && values["_token2"] !== "" &&
                 <div className={css.uniswapInformations}>
                   <b>Current position</b>
-                  <pre>{formatTokens(new BN(this.state.liquidity), tokens[values["_token1"]].symbol + " / " + tokens[values["_token2"]].symbol)} liquidity tokens</pre>
-                  <pre>{formatTokens(new BN(this.state.liquidityReturn1), tokens[values["_token1"]].symbol, tokens[values["_token1"]].decimals)}</pre>
-                  <pre>{formatTokens(new BN(this.state.liquidityReturn2), tokens[values["_token2"]].symbol, tokens[values["_token2"]].decimals)}</pre>
+                  <pre>{formatTokens(new BN(this.state.liquidity), uniswap.toToken(values["_token1"]).symbol + " / " + uniswap.toToken(values["_token2"]).symbol)} liquidity tokens</pre>
+                  <pre>{formatTokens(new BN(this.state.liquidityReturn1), uniswap.toToken(values["_token1"]).symbol, uniswap.toToken(values["_token1"]).decimals)}</pre>
+                  <pre>{formatTokens(new BN(this.state.liquidityReturn2), uniswap.toToken(values["_token2"]).symbol, uniswap.toToken(values["_token2"]).decimals)}</pre>
                 </div>
               }
               {!(values["_token1"] !== "" && values["_token2"] !== "") &&
