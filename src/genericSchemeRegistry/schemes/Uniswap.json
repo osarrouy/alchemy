@@ -214,7 +214,7 @@
       "notes": "Coming soon.",
       "fields": [
         {
-          "label": "Router address",
+          "label": "Router address. Use this to point to a new or forked instance of Uniswap.",
           "name": "_router"
         }
       ],
